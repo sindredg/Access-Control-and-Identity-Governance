@@ -1,0 +1,18 @@
+{
+  "displayName": "CA007-AzureManagement-RequireMFA",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "clientAppTypes": ["all"],
+    "applications": {
+      "includeApplications": ["797f4846-ba00-4fd7-ba43-dac1f8f63013"]
+    },
+    "users": {
+      "includeUsers": ["All"],
+      "excludeGroups": ["__BREAKGLASS_GROUP_ID__"]
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["mfa"]
+  }
+}

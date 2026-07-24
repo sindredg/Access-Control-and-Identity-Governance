@@ -5,7 +5,7 @@ The happy path lives in the phase walkthroughs; this file is where the real lear
 
 ---
 
-## Phase 0 · FIDO2 passkey registered, but sign-in only prompted for normal MFA
+## Phase 0: FIDO2 passkey registered, but sign-in only prompted for normal MFA
 
 **Symptom.** After registering a FIDO2 passkey on the break-glass account, the first sign-in
 used the key as expected. But after signing out and back in, the account was only prompted for
@@ -39,6 +39,47 @@ phishing-resistant authentication strength (Phase 2), not by stripping methods.
   ```
 
 ---
+
+## Phase 1: Environment - PowerShell won't run the script ("not digitally signed")
+
+**Symptom.** Running a repo script (for example `.\Deploy-CaPolicy.ps1 -List`) fails with
+`File ... cannot be loaded. The file ... is not digitally signed. You cannot run this script on
+the current system.`
+
+**Cause.** Two things together: the machine's PowerShell execution policy (RemoteSigned or
+AllSigned) blocks unsigned scripts that carry the "mark of the web", and files synced through
+OneDrive or downloaded from GitHub get that mark, so freshly synced repo scripts are treated as
+untrusted remote files.
+
+**Fix.** Either allow scripts for the current session only (reverts when the window closes):
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+Or, as a standing dev-machine setup, allow local and signed-remote scripts for your user and
+strip the mark of the web from the repo:
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+Get-ChildItem -Path . -Recurse -Filter *.ps1 | Unblock-File
+```
+
+**Lesson.** This is an environment issue, not a code issue. Scripts pulled from OneDrive or GitHub
+carry a mark-of-the-web zone tag; with RemoteSigned or AllSigned they need `Unblock-File` or a
+relaxed execution policy. Prefer `-Scope Process Bypass` while iterating so the machine default
+stays strict.
+
+---
+
+## Phase 2: Entry template (copy for the next one)
+
+## Phase X · <short symptom title>
+
+**Symptom.** What you saw.
+
+**Cause.** Why it happened.
+
+**Fix.** What resolved it (numbered if multiple steps).
+
+**Lesson.** The takeaway worth remembering.
 
 ## Entry template (for the next one)
 

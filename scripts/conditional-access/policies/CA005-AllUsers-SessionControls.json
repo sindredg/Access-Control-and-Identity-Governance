@@ -1,0 +1,26 @@
+{
+  "displayName": "CA005-AllUsers-SessionControls",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "clientAppTypes": ["browser", "mobileAppsAndDesktopClients"],
+    "applications": {
+      "includeApplications": ["All"]
+    },
+    "users": {
+      "includeUsers": ["All"],
+      "excludeGroups": ["__BREAKGLASS_GROUP_ID__"]
+    }
+  },
+  "sessionControls": {
+    "signInFrequency": {
+      "isEnabled": true,
+      "frequencyInterval": "timeBased",
+      "type": "hours",
+      "value": 8
+    },
+    "persistentBrowser": {
+      "isEnabled": true,
+      "mode": "never"
+    }
+  }
+}
