@@ -2,16 +2,16 @@
 
 **Goal:** create a cloud-only emergency-access (break-glass) account with a permanent Global
 Administrator role, then secure it with phishing-resistant MFA (a FIDO2 security key) so it's
-the guaranteed way back in if Conditional Access ever locks every admin out.
+the guaranteed way back in if Conditional Access ever locks us out.
 
 > **Best practice:** Microsoft recommends emergency-access accounts use a phishing-resistant
-> passwordless method — **passkey (FIDO2)** (recommended) or certificate-based auth, rather than
+> passwordless method, **passkey (FIDO2)** (recommended) or certificate-based auth, rather than
 > a password alone, and that they're excluded from enforced Conditional Access policies.
 > See [Manage emergency access accounts in Microsoft Entra ID](https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access).
 
 ---
 
-## Phase 1: Create the break-glass account
+## Phase 1 - Create the break-glass account
 
 **1. Create a break-glass security group** in Entra ID and assign it the permanent Global Administrator role.
 
@@ -40,7 +40,7 @@ Get-MgUser -UserId "<BREAKGLASS_OBJECT_ID>" -Property DisplayName, UserPrincipal
 
 ---
 
-## Phase 2: MFA and FIDO2
+## Phase 2 - MFA and FIDO2
 
 **1.** Sign in with the break-glass account and change the password to a random, complex string that is saved securely (offline).
 
@@ -50,7 +50,7 @@ Get-MgUser -UserId "<BREAKGLASS_OBJECT_ID>" -Property DisplayName, UserPrincipal
 
 ![MFA setup](images/phase0/mfa-setup.png)
 
-**3.** After setting up MFA, configure the FIDO2 key from the Microsoft Authenticator app on the mobile device.
+**3.** After setting up MFA - configure the FIDO2 key from the Microsoft Authenticator app on the mobile device.
 
 **4.** Sign out and in again: We're now prompted for both MFA and FIDO2 during setup. We test FIDO2 for the first time and it works.
 
