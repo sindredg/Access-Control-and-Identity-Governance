@@ -1,0 +1,18 @@
+{
+  "displayName": "CA006-Guests-RequireMFA",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "clientAppTypes": ["all"],
+    "applications": {
+      "includeApplications": ["All"]
+    },
+    "users": {
+      "includeUsers": ["GuestsOrExternalUsers"],
+      "excludeGroups": ["__BREAKGLASS_GROUP_ID__"]
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["mfa"]
+  }
+}

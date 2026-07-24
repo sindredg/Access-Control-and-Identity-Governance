@@ -1,0 +1,18 @@
+{
+  "displayName": "CA003-BlockLegacyAuth",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "clientAppTypes": ["exchangeActiveSync", "other"],
+    "applications": {
+      "includeApplications": ["All"]
+    },
+    "users": {
+      "includeUsers": ["All"],
+      "excludeGroups": ["__BREAKGLASS_GROUP_ID__"]
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}
