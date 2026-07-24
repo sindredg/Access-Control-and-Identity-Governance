@@ -11,7 +11,11 @@ the guaranteed way back in if Conditional Access ever locks us out.
 
 ---
 
+<<<<<<< HEAD
+## Phase 1: Create the break-glass account
+=======
 ## Phase 1 - Create the break-glass account
+>>>>>>> ffacae4649cbcc670e61ebc47af00ce8c23dd62e
 
 **1. Create a break-glass security group** in Entra ID and assign it the permanent Global Administrator role.
 
@@ -40,7 +44,11 @@ Get-MgUser -UserId "<BREAKGLASS_OBJECT_ID>" -Property DisplayName, UserPrincipal
 
 ---
 
+<<<<<<< HEAD
+## Phase 2: MFA and FIDO2
+=======
 ## Phase 2 - MFA and FIDO2
+>>>>>>> ffacae4649cbcc670e61ebc47af00ce8c23dd62e
 
 **1.** Sign in with the break-glass account and change the password to a random, complex string that is saved securely (offline).
 
