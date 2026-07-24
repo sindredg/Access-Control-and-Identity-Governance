@@ -47,7 +47,6 @@ param(
     [switch] $List,
 
     [string] $PoliciesPath = (Join-Path $PSScriptRoot 'policies'),
-    [string] $NamedLocationsPath = (Join-Path $PSScriptRoot 'named-locations'),
     [string] $BreakGlassGroupName = "breakglass-accounts",
     [string] $BreakGlassGroupId
 )
@@ -88,52 +87,11 @@ $files = switch ($PSCmdlet.ParameterSetName) {
     }
 }
 
-# --- Ensure the allowed-countries named location (only if a policy needs it) -
-# CA004 references the country allow-list by id via the __ALLOWED_COUNTRIES_LOCATION_ID__ token.
-# The country set is defined in named-locations/loc-allowed-countries.json (edit that file to
-# change the allowed countries). We create or update the named location from it here.
-$allowedCountriesLocationId = $null
-if ($files | Where-Object { (Get-Content $_.FullName -Raw) -match "__ALLOWED_COUNTRIES_LOCATION_ID__" }) {
-    $locFile = Join-Path $NamedLocationsPath 'loc-allowed-countries.json'
-    if (-not (Test-Path $locFile)) { throw "Named location file not found: $locFile" }
-    $locJson = Get-Content -Path $locFile -Raw
-    $locDef  = $locJson | ConvertFrom-Json
-    $locName = $locDef.displayName
-    $countryList = ($locDef.countriesAndRegions -join ', ')
-
-    $existingLoc = Get-MgIdentityConditionalAccessNamedLocation -All |
-        Where-Object { $_.DisplayName -eq $locName } | Select-Object -First 1
-
-    if ($existingLoc) {
-        Invoke-MgGraphRequest -Method PATCH `
-            -Uri "https://graph.microsoft.com/v1.0/identity/conditionalAccess/namedLocations/$($existingLoc.Id)" `
-            -Body $locJson | Out-Null
-        $allowedCountriesLocationId = $existingLoc.Id
-        Write-Host "Updated named location '$locName' ($countryList)" -ForegroundColor Yellow
-    } else {
-        $resp = Invoke-MgGraphRequest -Method POST `
-            -Uri "https://graph.microsoft.com/v1.0/identity/conditionalAccess/namedLocations" `
-            -Body $locJson
-        $allowedCountriesLocationId = $resp.id
-        Write-Host "Created named location '$locName' ($countryList)" -ForegroundColor Green
-        # A new named location needs a moment to replicate before a policy can reference it.
-        Write-Host "Waiting for named location to replicate..." -ForegroundColor DarkGray
-        for ($i = 1; $i -le 12; $i++) {
-            if (Get-MgIdentityConditionalAccessNamedLocation -NamedLocationId $allowedCountriesLocationId -ErrorAction SilentlyContinue) { break }
-            Start-Sleep -Seconds 5
-        }
-        Start-Sleep -Seconds 10
-    }
-}
-
 # --- Deploy ------------------------------------------------------------------
 $existing = Get-MgIdentityConditionalAccessPolicy -All
 
 foreach ($f in $files) {
     $body = (Get-Content -Path $f.FullName -Raw).Replace("__BREAKGLASS_GROUP_ID__", $BreakGlassGroupId)
-    if ($allowedCountriesLocationId) {
-        $body = $body.Replace("__ALLOWED_COUNTRIES_LOCATION_ID__", $allowedCountriesLocationId)
-    }
     $name = ($body | ConvertFrom-Json).displayName
 
     if ($existing | Where-Object { $_.DisplayName -eq $name }) {
@@ -141,23 +99,8 @@ foreach ($f in $files) {
         continue
     }
 
-    # Retry to absorb named-location replication lag (400 "NamedLocation ... does not exist").
-    $created = $false
-    for ($i = 1; $i -le 5 -and -not $created; $i++) {
-        try {
-            Invoke-MgGraphRequest -Method POST `
-                -Uri "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies" `
-                -Body $body -ErrorAction Stop | Out-Null
-            $created = $true
-            Write-Host "Created (report-only): $name" -ForegroundColor Green
-        } catch {
-            if ($_.Exception.Message -match "NamedLocation.*does not exist") {
-                Write-Host "Named location not propagated yet, retrying in 10s ($i/5)..." -ForegroundColor Yellow
-                Start-Sleep -Seconds 10
-            } else {
-                throw
-            }
-        }
-    }
-    if (-not $created) { throw "Failed to create '$name' after retries." }
+    Invoke-MgGraphRequest -Method POST `
+        -Uri "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies" `
+        -Body $body | Out-Null
+    Write-Host "Created (report-only): $name" -ForegroundColor Green
 }

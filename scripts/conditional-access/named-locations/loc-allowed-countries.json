@@ -1,0 +1,6 @@
+{
+  "@odata.type": "#microsoft.graph.countryNamedLocation",
+  "displayName": "loc-allowed-countries",
+  "countriesAndRegions": ["NO", "ES", "GB"],
+  "includeUnknownCountriesAndRegions": false
+}
