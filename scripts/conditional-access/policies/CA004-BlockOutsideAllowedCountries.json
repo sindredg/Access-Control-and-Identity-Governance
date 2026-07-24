@@ -1,0 +1,22 @@
+{
+  "displayName": "CA004-BlockOutsideAllowedCountries",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "clientAppTypes": ["all"],
+    "applications": {
+      "includeApplications": ["All"]
+    },
+    "users": {
+      "includeUsers": ["All"],
+      "excludeGroups": ["__BREAKGLASS_GROUP_ID__"]
+    },
+    "locations": {
+      "includeLocations": ["All"],
+      "excludeLocations": ["__ALLOWED_COUNTRIES_LOCATION_ID__"]
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}
