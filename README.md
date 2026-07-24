@@ -1,11 +1,12 @@
 # Access Control & Identity Governance on Entra ID
 
-> **Status: work in progress.** Phases 0 to 2 are built and documented. The privileged-access and
-> identity-governance phases (PIM, entitlement management, access reviews, lifecycle workflows,
+> **Status: work in progress.** Phases 0 to 3 are built and documented. The remaining
+> identity-governance phases (entitlement management, access reviews, lifecycle workflows,
 > monitoring) are planned. This README will grow as they land.
 
-A hands-on lab that governs access to a self-hosted application with Microsoft Entra ID: SSO, Conditional
-Access, risk-based policies, and (coming) Privileged Identity Management and identity governance.
+A hands-on lab that governs access to a self-hosted application with Microsoft Entra ID: Conditional
+Access, risk-based policies, Privileged Identity Management, and (coming) the rest of identity
+governance.
 
 It builds directly on [IAM-on-self-hosted-webapp](https://github.com/sindredg/IAM-on-self-hosted-webapp),
 which stood up Entra ID as the identity provider for a self-hosted **Grafana** app (OIDC SSO,
@@ -23,7 +24,7 @@ and [Identity governance strategy](https://learn.microsoft.com/training/paths/pl
 | 0 | Foundations: break-glass account (FIDO2), personas | Done | [break-glass](docs/00-phase0-breakglass-walkthrough.md) |
 | 1 | Conditional Access baseline (MFA, legacy-auth, session, guests, mgmt, security-info) | Done | [conditional-access](docs/01-conditional-access.md) |
 | 2 | Locations and risk (country allow-list, sign-in / user risk) | Done | [context-risk](docs/02-ca-context-risk.md) |
-| 3 | Privileged Identity Management (JIT admin, PIM for Groups) | Planned | |
+| 3 | Privileged Identity Management (JIT admin, PIM for Groups) | Done | [pim](docs/03-pim.md) |
 | 4 | Entitlement management (access packages) | Planned | |
 | 5 | Access reviews | Planned | |
 | 6 | Lifecycle workflows (joiner / mover / leaver) | Planned | |
@@ -50,35 +51,33 @@ authored in report-only, with the break-glass group excluded.
 
 | Persona | Group | Role | Purpose |
 | --- | --- | --- | --- |
-| Amanda Admin | `grafana-admins` | Admin | Admin persona (Phase 3 moves this to PIM-eligible) |
-| Priya Approver | `grafana-admins` | Approver | Approves PIM activations and access reviews |
-| Edvard Editor | `grafana-editors` | Editor | Standard workforce user |
+| Amanda Admin | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor by default, Admin via PIM | Standing Editor; activates Grafana Admin just-in-time (Phase 3) |
+| Adam Analyst | `grafana-editor` | Editor | Requests access via an access package (Phase 4) |
+| Edvard Editor | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor, Admin via PIM | Standing Editor; PIM-eligible for Admin (Phase 3) |
 | Victoria Viewer | `grafana-viewers` | Viewer | Standard workforce user |
 | Nils Worker | `grafana-viewers` | Viewer | Drives the lifecycle workflow (Phase 6) |
-| Adam Analyst | `grafana-viewers` | Viewer | Requests access via an access package (Phase 4) |
 | Carla Contractor | external (B2B) | Viewer | Guest access + entitlement management |
 | Break-glass | `breakglass-accounts` | Global Admin | Emergency access, FIDO2, excluded from all CA and PIM |
+| Sindre G | — | IAM Architect | Approver / reviewer persona |
 
 ## Repository layout
 
 ```
-entra-access-governance-lab/
+Access-Control-and-Identity-Governance/
 ├── README.md                         This file
 ├── docs/
 │   ├── 00-phase0-breakglass-walkthrough.md   Break-glass account + FIDO2 (portal)
 │   ├── 01-conditional-access.md              Phase 1: CA baseline + enforcement behavior
 │   ├── 02-ca-context-risk.md                 Phase 2: country allow-list + risk policies
+│   ├── 03-pim.md                             Phase 3: just-in-time Grafana Admin (PIM for Groups)
 │   ├── 99-troubleshooting.md                 Symptom / cause / fix / lesson log
 │   └── images/                               Evidence screenshots, per phase
 └── scripts/
-    ├── 00-seed-personas.ps1                  Seed the extended cast + groups + guest invite
     └── conditional-access/
         ├── Deploy-CaPolicy.ps1               Deploy one policy (or all), report-only, idempotent
         ├── policies/                         One JSON per CA policy
         └── named-locations/                  Country allow-list as JSON
 ```
-
-Break-glass is deliberately a portal walkthrough (a one-off, security-critical task), not a script.
 
 ## Conventions
 
