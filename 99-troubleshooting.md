@@ -69,6 +69,43 @@ stays strict.
 
 ---
 
+## Phase 1 · Password reset locks a user out of MFA registration (CA008 deadlock)
+
+**Symptom.** After resetting a test user's password (Adam), sign-in and
+`https://aka.ms/mysecurityinfo` both returned: "Your sign-in was blocked. We are currently
+unable to collect additional security information. Your organisation requires this information
+to be set from specific locations or devices."
+
+**Cause.** `CA008-SecurityInfoRegistration-MFA` requires MFA to register security info. The
+password reset left the account with no usable MFA method, so the user is deadlocked: they can't
+do MFA (nothing registered) and can't register (policy requires MFA first).
+
+**Fix.** Bootstrap the user with a Temporary Access Pass (a TAP counts as MFA), then let them
+register their real method. Getting there surfaced three sub-issues, each a lesson on its own:
+1. The TAP *method* was off by default. Enable it first:
+   `PATCH /policies/authenticationMethodsPolicy/authenticationMethodConfigurations/TemporaryAccessPass`
+   with `state = enabled` and an `includeTargets` group (`all_users`).
+2. `New-MgUserAuthenticationTemporaryAccessPassMethod` returned 404 "user could not be found"
+   because the UPN still had the literal `<tenant>` placeholder. Resolve the user first
+   (`Get-MgUser`) and pass the object Id.
+3. The pass code is only returned at creation and is not in the default table output. Capture it
+   explicitly: `$result.TemporaryAccessPass`. A TAP already existing blocks creating another, so
+   delete the old one first.
+
+The user then signs in with the TAP code instead of a password, which satisfies MFA, passes
+CA008, and lets them register. TAP is time-limited (60 min here), so register promptly, ours
+expired mid-test and had to be reissued.
+
+Quick alternative unblock: set CA008 to `enabledForReportingButNotEnforced`, let the user register
+password + Authenticator, then set it back to `enabled`.
+
+**Lesson.** Any policy that gates MFA *registration* creates a chicken-and-egg for users who have
+no MFA yet (new hires, password resets that clear methods). Pair it with TAP-based onboarding or a
+trusted-location exception so first registration is possible. This is the same TAP pattern the
+Phase 6 lifecycle workflows use for new-hire onboarding.---
+
+---
+
 ## Phase 2: Entry template (copy for the next one)
 
 ## Phase X · <short symptom title>

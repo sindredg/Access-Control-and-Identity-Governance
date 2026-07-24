@@ -23,7 +23,7 @@ All are created in report-only, and the security group `breakglass-accounts` is 
 
 ---
 
-## Phase 1: Deploy the baseline policies
+## 1. Deploy the baseline policies
 
 **1.**We deploy the baseline Conditional Access policies. First, list what is available:
 
@@ -51,7 +51,7 @@ Open a policy and review its configuration on the **Edit policy** view (assignme
 
 ---
 
-## Phase 2: Validate with the What-If tool
+## 2: Validate with the What-If tool
 
 **1.** In **Entra ID > Conditional Access**, we open the **What-If** tool to see which policies would apply for a given scenario. We simulate **Adam Analyst** accessing the in-house Grafana app from a **Windows** device using **modern authentication**.
 
@@ -86,7 +86,7 @@ We can now se in the portal that all policies show as 'State: On', rather than '
 
 ---
 
-## Phase 3: Testing first sign-in and policy behaviors
+## 3: Testing first sign-in and policy behaviors
 
 With the policies enforced, we test how they behave for a user signing in for the first time.
 
