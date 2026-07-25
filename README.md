@@ -8,6 +8,8 @@ A hands-on lab that governs access to a self-hosted application with Microsoft E
 Access, risk-based policies, Privileged Identity Management, and (coming) the rest of identity
 governance.
 
+Check docs/ for: [Documented setup and troubleshooting](docs/)
+
 It builds directly on [IAM-on-self-hosted-webapp](https://github.com/sindredg/IAM-on-self-hosted-webapp),
 which stood up Entra ID as the identity provider for a self-hosted **Grafana** app (OIDC SSO,
 app-role mapping, SCIM provisioning). Where that project answered *who can sign in and what role
@@ -21,7 +23,7 @@ and [Identity governance strategy](https://learn.microsoft.com/training/paths/pl
 
 | Phase | Focus | State | Docs |
 | --- | --- | --- | --- |
-| 0 | Foundations: break-glass account (FIDO2), personas | Done | [break-glass](docs/00-phase0-breakglass-walkthrough.md) |
+| 0 | Foundations: break-glass account (FIDO2), personas | Done | [break-glass](docs/00-breakglass-setup.md) |
 | 1 | Conditional Access baseline (MFA, legacy-auth, session, guests, mgmt, security-info) | Done | [conditional-access](docs/01-conditional-access.md) |
 | 2 | Locations and risk (country allow-list, sign-in / user risk) | Done | [context-risk](docs/02-ca-context-risk.md) |
 | 3 | Privileged Identity Management (JIT admin, PIM for Groups) | Done | [pim](docs/03-pim.md) |
@@ -66,7 +68,7 @@ authored in report-only, with the break-glass group excluded.
 Access-Control-and-Identity-Governance/
 ├── README.md                         This file
 ├── docs/
-│   ├── 00-phase0-breakglass-walkthrough.md   Break-glass account + FIDO2 (portal)
+│   ├── 00-breakglass-setup.md   Break-glass account + FIDO2 (portal)
 │   ├── 01-conditional-access.md              Phase 1: CA baseline + enforcement behavior
 │   ├── 02-ca-context-risk.md                 Phase 2: country allow-list + risk policies
 │   ├── 03-pim.md                             Phase 3: just-in-time Grafana Admin (PIM for Groups)
