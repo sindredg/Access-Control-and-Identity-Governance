@@ -9,13 +9,20 @@ the guaranteed way back in if Conditional Access ever locks us out.
 > a password alone, and that they're excluded from enforced Conditional Access policies.
 > See [Manage emergency access accounts in Microsoft Entra ID](https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access).
 
+**Why this matters.** If Conditional Access is ever misconfigured, a normal admin can be locked out
+along with everyone else. The break-glass account is the one identity we keep deliberately outside
+every policy, so there is always a way back in.
+
+**Trade-off from best practice.** Microsoft recommends at least two emergency-access accounts, so a
+single lost key cannot lock the tenant out. We run one here to keep the lab simple, which leaves that
+FIDO2 key as a single point of failure, and the account is not monitored yet (alerting is Phase 7).
+The production version would add a second account with a different method stored separately, and alert
+on every break-glass sign-in. See [ADR 0001](adr/0001-single-break-glass-account.md) and the
+[risk register](risk-and-controls.md).
+
 ---
 
-<<<<<<< HEAD
 ## Phase 1: Create the break-glass account
-=======
-## Phase 1 - Create the break-glass account
->>>>>>> ffacae4649cbcc670e61ebc47af00ce8c23dd62e
 
 **1. Create a break-glass security group** in Entra ID and assign it the permanent Global Administrator role.
 
@@ -44,11 +51,7 @@ Get-MgUser -UserId "<BREAKGLASS_OBJECT_ID>" -Property DisplayName, UserPrincipal
 
 ---
 
-<<<<<<< HEAD
 ## Phase 2: MFA and FIDO2
-=======
-## Phase 2 - MFA and FIDO2
->>>>>>> ffacae4649cbcc670e61ebc47af00ce8c23dd62e
 
 **1.** Sign in with the break-glass account and change the password to a random, complex string that is saved securely (offline).
 
@@ -80,5 +83,20 @@ Get-MgUser -UserId "<BREAKGLASS_OBJECT_ID>" -Property DisplayName, UserPrincipal
 
 ---
 
+## Verification / test matrix
+
+| # | Test | Type | Result |
+| --- | --- | --- | --- |
+| 1 | Break-glass signs in with the FIDO2 key | + | Succeeds passwordless, no other prompt |
+| 2 | Only the FIDO2 method is registered | control | Authenticator and phone removed, the key is the sole method |
+| 3 | Password set to never expire | control | Verified through Graph (`PasswordPolicies`) |
+| 4 | Sign-in offers a non-FIDO2 method | - | Should not happen once other methods are removed; if it does, an unwanted method is still registered |
+| 5 | Break-glass excluded from enforced Conditional Access | + / control | Confirmed in Phase 1 and 3: the account keeps access with every policy On |
+
+Not yet covered: alerting on break-glass use. That is Phase 7, and until then the account is a
+known unmonitored gap (see the [risk register](risk-and-controls.md)).
+
+---
+
 ### Reference
-- [Manage emergency access accounts in Microsoft Entra ID](https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access) — Microsoft's best-practice guidance (create cloud-only GA accounts, secure with FIDO2/passkey, exclude from Conditional Access, monitor and test).
+- [Manage emergency access accounts in Microsoft Entra ID](https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access). Microsoft's best-practice guidance (create cloud-only GA accounts, secure with FIDO2/passkey, exclude from Conditional Access, monitor and test).
