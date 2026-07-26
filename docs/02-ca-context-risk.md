@@ -127,13 +127,6 @@ Barcelona passes the country test but fails the travel test, so risk still block
 
 ---
 
-## What comes next in Phase 2
-
-- **App-targeted policy on the Grafana app** and an **authentication context** (`c1-grafana-admin`)
-  for step-up, which we reuse in Phase 3 to gate PIM role activation.
-
----
-
 ### Reference
 - [Configure risk-based Conditional Access policies](https://learn.microsoft.com/entra/id-protection/howto-identity-protection-configure-risk-policies)
 - [What is Microsoft Entra ID Protection](https://learn.microsoft.com/entra/id-protection/overview-identity-protection)
