@@ -14,6 +14,16 @@ then move to the next.
   bindings (for example authentication strengths) are preserved.
 - Deploy is **idempotent**: a policy whose display name already exists is skipped.
 
+## Named locations
+
+`CA004` references a country allow-list by id, via the token `__ALLOWED_COUNTRIES_LOCATION_ID__`.
+When a policy being deployed contains that token, the script creates or updates the named location
+from `named-locations/loc-allowed-countries.json` and substitutes the resulting id.
+
+Edit that file to change the allowed countries (currently `NO`, `ES`, `GB`). A newly created named
+location needs a moment to replicate before a policy can reference it, so the script waits and
+retries on the `NamedLocation ... does not exist` error.
+
 ## Usage
 
 ```powershell
@@ -30,6 +40,9 @@ then move to the next.
 .\Deploy-CaPolicy.ps1 -All
 ```
 
+Scopes: `Policy.ReadWrite.ConditionalAccess`, `Policy.Read.All`, `Group.Read.All`.
+Role: Conditional Access Administrator (or Security Administrator).
+
 ## Enforce a policy (separate, deliberate step)
 
 Deployment only creates report-only policies. After reviewing impact enforce one at a time:
@@ -41,6 +54,8 @@ Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId $p.Id -State
 
 ## Policies
 
+Phase 1, baseline:
+
 | File | What it does | Notes |
 | --- | --- | --- |
 | `CA001-AllUsers-RequireMFA` | Require MFA for all users | Core baseline |
@@ -48,7 +63,15 @@ Update-MgIdentityConditionalAccessPolicy -ConditionalAccessPolicyId $p.Id -State
 | `CA005-AllUsers-SessionControls` | Sign-in frequency (8h) + no persistent browser | Highest friction, consider scoping to admins / unmanaged before enforcing |
 | `CA006-Guests-RequireMFA` | MFA for guest / external users | |
 | `CA007-AzureManagement-RequireMFA` | MFA for the Azure management plane | |
-| `CA008-SecurityInfoRegistration-MFA` | MFA when registering / changing security info | Uses a user action, not an app target |
+| `CA008-SecurityInfoRegistration-MFA` | MFA when registering / changing security info | Uses a user action, not an app target. Can deadlock a user with no MFA method yet, see the [troubleshooting log](../../docs/99-troubleshooting.md) |
 
-Notes:
-- `CA002` (phishing-resistant MFA for admins) and `CA004` (block sign-ins outside allowed countries) is intentionally not included in this lab setup.
+Phase 2, location and risk:
+
+| File | What it does | Notes |
+| --- | --- | --- |
+| `CA004-BlockOutsideAllowedCountries` | Block sign-ins from outside the allowed countries | Needs `named-locations/loc-allowed-countries.json` |
+| `CA010-SignInRisk-Block` | Block on medium / high sign-in risk | Identity Protection |
+| `CA011-UserRisk-RequirePasswordChange` | MFA + secure password change on high user risk | Identity Protection |
+
+Numbering gaps: `CA002` (phishing-resistant MFA for admins) and `CA009` are reserved and not
+built in this lab.

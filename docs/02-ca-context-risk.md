@@ -74,8 +74,6 @@ still in report-only, so any risk is only logged, not enforced.
 We switch **`CA010-SignInRisk-Block` to On** (enforced), then move the VPN exit to **Norway** and try
 to sign in again within a couple of minutes. This time it fails: **"You cannot access this right now."**
 
-![Sign-in from Norway is blocked](images/phase2/norway-blocked.png)
-
 Norway and Spain are both allowed locations, so CA004 is not the blocker. The block comes from
 **sign-in risk**: signing in from Madrid and then Oslo within minutes is physically impossible, so
 Identity Protection raises an **atypical-travel** detection (the impossible-travel style signal), the

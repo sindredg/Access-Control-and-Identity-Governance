@@ -17,7 +17,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
-    [string] $ApproverUpn,        # e.g. "Sindre@grytebdigitalsolutions.onmicrosoft.com"
+    [string] $ApproverUpn,        # e.g. "Sindre@<tenant>.onmicrosoft.com"
     [string] $ViewerPackageName     = "ap-grafana-viewer-employees",
     [string] $ContractorPackageName = "ap-grafana-contractor-guests",
     [int]    $ViewerDurationDays     = 90,
