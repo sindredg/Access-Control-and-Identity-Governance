@@ -1,0 +1,48 @@
+{
+  "exportedDateTime": "2026-07-26T16:15:36.6116828+02:00",
+  "catalog": {
+    "displayName": "cat-grafana",
+    "description": "Grafana access packages",
+    "catalogType": "UserManaged",
+    "state": null,
+    "isExternallyVisible": true
+  },
+  "accessPackages": [
+    {
+      "displayName": "ap-grafana-contractor-guests",
+      "description": "Grafana Viewer access",
+      "resourceRoles": [
+        " on "
+      ],
+      "incompatibleWith": [],
+      "policies": [
+        {
+          "displayName": "External contractors - approver Sindre G - 30 days",
+          "durationInDays": 30,
+          "requestorScope": "AllExternalSubjects",
+          "approvalRequired": true,
+          "approvalMode": "SingleStage"
+        }
+      ]
+    },
+    {
+      "displayName": "ap-grafana-viewer-employees",
+      "description": "Grafana Viewer access",
+      "resourceRoles": [
+        " on "
+      ],
+      "incompatibleWith": [
+        "ap-grafana-contractor-guests"
+      ],
+      "policies": [
+        {
+          "displayName": "Employees - manager approval - 90 days",
+          "durationInDays": 90,
+          "requestorScope": "AllExistingDirectoryMemberUsers",
+          "approvalRequired": true,
+          "approvalMode": "SingleStage"
+        }
+      ]
+    }
+  ]
+}

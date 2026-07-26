@@ -106,7 +106,75 @@ Phase 6 lifecycle workflows use for new-hire onboarding.---
 
 ---
 
-## Phase 2: Entry template (copy for the next one)
+## Phase 4 · Grafana "Login failed: User sync failed" after access-package + SCIM provisioning
+
+**Symptom.** Nils's access to `grafana-viewers` was requested via the access package and approved by
+his manager (Amanda). The Entra **provisioning logs** show the SCIM sync succeeded, and the Entra
+**sign-in logs** show a successful sign-in. But when Nils signs in to the Grafana app itself, Grafana
+returns **"Login failed: User sync failed."**
+
+![Grafana: Login failed, User sync failed](images/phase4/grafana-sync-failed.png)
+
+**Cause.** Two provisioning paths manage the same person: SCIM **pre-created** the Grafana user, and
+now OIDC login tries to reconcile against that existing account. Since the CVE-2023-3128 hardening,
+Grafana **does not link an OAuth/OIDC login to an existing user by email by default**
+(`oauth_allow_insecure_email_lookup` defaults to `false`). So the OIDC login can't match the
+SCIM-created account, and the user sync fails. Entra is doing its job (it issued a valid token and
+SCIM synced the account); the failure is entirely on the Grafana side reconciling two identities for
+one user.
+
+**Fix.**
+1. Confirm the exact reason in the **Grafana server logs** (`sudo docker compose logs -f grafana` on
+   the VM) - look for a user lookup / duplicate email line around the failed login.
+2. Allow OAuth to link to the existing SCIM user by email. Because our compose file uses the
+   `KEY: "value"` mapping style, we added to the grafana service `environment:` block:
+   ```yaml
+   GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP: "true"
+   ```
+   (Equivalently, `grafana.ini` under `[auth]`: `oauth_allow_insecure_email_lookup = true`.)
+3. Recreate the container so the new env var is actually applied (a plain restart is not enough, env
+   changes only take effect on recreate):
+   ```bash
+   sudo docker compose up -d --force-recreate grafana
+   sudo docker compose exec grafana env | grep INSECURE_EMAIL_LOOKUP   # confirm it is set
+   ```
+   Look for **"Container grafana Recreated"** (not "Running") and the grep echoing the value. Nils
+   then signs in and lands on the Viewer role.
+
+   ![Nils signs in to Grafana as Viewer after the fix](images/phase4/nils-grafana-viewer.png)
+4. Alternative (no email matching at all): align on the stable immutable ID so login and
+   pre-provisioning reconcile on `oid`/`sub` rather than email. That means making the SCIM bridge set
+   the Grafana user's auth identity to the same Entra object ID the OIDC token presents. More work and
+   a bridge change, but it removes the need for the flag entirely.
+
+**Note:**
+The setting name is deliberately alarming, so it is worth being precise about the risk and why it is
+acceptable *here*.
+- **The risk it guards against (CVE-2023-3128).** Email-based linking is dangerous when the IdP hands
+  out email claims that are **unverified and user-settable**. An attacker could set their profile
+  email to `victim@company.com`, sign in, get linked to the victim's existing Grafana account, and
+  take it over. That is exactly why Grafana disabled email lookup by default.
+- **Why it is acceptable in this lab.** The precondition (untrusted, self-settable email) does not
+  hold. The IdP is **our own single Entra tenant**; the email / UPN comes from accounts we provision,
+  users cannot freely rewrite their verified UPN to impersonate someone else, and every sign-in has
+  already passed Conditional Access and MFA. We already trust Entra's email claim for everything else
+  in the project, so trusting it for account linking adds no new trust assumption.
+- **When it would be bad.** Multi-tenant or federated setups where email claims come from IdPs you do
+  not control, or any tenant that allows unverified self-service email edits. There, prefer the
+  immutable-ID approach in fix step 4 and leave the flag `false`.
+
+**Verdict:** ok for a lab single-tenant environment, self-controlled IdP with verified emails; genuinely risky
+in multi-tenant / federated contexts.
+
+**Lesson.** When both SCIM pre-provisioning and JIT OIDC login manage the same user, **identity
+reconciliation is the hard part, not provisioning.** "Entra sign-in succeeded" and "SCIM synced" do
+not guarantee the app accepts the login; the application still has to match the two identities to one
+account. Grafana's secure-by-default email lookup is a very common gotcha in combined SCIM + OIDC
+setups, and the "right" long-term fix is to reconcile on immutable IDs, not email.
+
+---
+
+## Entry template (copy for the next one)
 
 ## Phase X · <short symptom title>
 
@@ -118,14 +186,3 @@ Phase 6 lifecycle workflows use for new-hire onboarding.---
 
 **Lesson.** The takeaway worth remembering.
 
-## Entry template (for the next one)
-
-## Phase X · <short symptom title>
-
-**Symptom.** What you saw.
-
-**Cause.** Why it happened.
-
-**Fix.** What resolved it (numbered if multiple steps).
-
-**Lesson.** The takeaway worth remembering.
