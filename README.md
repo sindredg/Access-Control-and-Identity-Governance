@@ -96,6 +96,10 @@ How the pieces move:
 The [troubleshooting log](docs/99-troubleshooting.md) is where the unexpected things (and the real
 learning) are captured.
 
+For the reasoning behind the controls, see the [risk register and control mapping](docs/risk-and-controls.md)
+(what each control reduces, the residual risk we accept, and a Zero Trust and CIS v8 mapping) and the
+[decision records](docs/adr/) for the choices that could have gone another way.
+
 ## Conditional Access policies (built)
 
 Every policy is a JSON definition deployed one at a time (or all) with `Deploy-CaPolicy.ps1`,
@@ -120,11 +124,11 @@ authored in report-only, with the break-glass group excluded.
 | Amanda Admin | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor by default, Admin via PIM | Standing Editor; activates Grafana Admin just-in-time (Phase 3); approves access-package requests as manager (Phase 4) |
 | Edvard Editor | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor, Admin via PIM | Standing Editor; PIM-eligible for Admin (Phase 3) |
 | Nils Normal | `grafana-viewers` (via access package) | Viewer | Requested the viewer access package end to end (Phase 4); drives the lifecycle workflow (Phase 6) |
-| Adam Analyst | `grafana-editors` (standing) | — | Comditional access blocks MFA setup (Phase 2) |
+| Adam Analyst | `grafana-editors` (standing) | Editor | Conditional Access blocks his MFA setup after a password reset, the CA008 deadlock (Phase 1) |
 | Victoria Viewer | `grafana-viewers` | Viewer | Standard workforce user |
 | Carla Contractor | external (B2B) | Viewer | Contractor access package + guest governance (Phase 4, design) |
 | Break-glass | `breakglass-accounts` | Global Admin | Emergency access, FIDO2, excluded from all CA and PIM |
-| Sindre G | — | IAM Architect | Approver / reviewer: PIM approver (Phase 3), contractor-package approver (Phase 4) |
+| Sindre G | (none) | IAM Architect | Approver / reviewer: PIM approver (Phase 3), contractor-package approver (Phase 4) |
 
 ## Repository layout
 
@@ -138,6 +142,8 @@ Access-Control-and-Identity-Governance/
 │   ├── 03-pim.md                            Phase 3: just-in-time Grafana Admin (PIM for Groups)
 │   ├── 04-entitlement-management.md         Phase 4: access packages (self-service, SoD)
 │   ├── 99-troubleshooting.md                Symptom / cause / fix / lesson log
+│   ├── risk-and-controls.md                 Risk register, residual risk, Zero Trust + CIS v8 mapping
+│   ├── adr/                                 Decision records for the debatable choices
 │   └── images/                              Evidence screenshots, per phase (images/phase#/)
 └── scripts/
     ├── conditional-access/
@@ -160,7 +166,7 @@ Access-Control-and-Identity-Governance/
 - **Report-only before enforce.** No policy goes straight to On; enforcement is a separate, manual step.
 - **The things that belong in the portal, we do in the portal;** the repetitive / at-scale work is
   scripted (Microsoft Graph PowerShell), idempotent, and kept as code.
-- **Every phase ends with a test matrix** (positive and negative cases) and evidence screenshots.
+- **Every phase ends with a test matrix** (positive, negative, and control cases) and evidence screenshots.
 - **The troubleshooting log is where the real learning lives** (the walkthroughs show the clean path).
 
 > Note: the lab tenant and the Grafana environment may be torn down between sessions, so live

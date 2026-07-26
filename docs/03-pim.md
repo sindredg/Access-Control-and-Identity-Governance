@@ -9,13 +9,23 @@ Justification is required on every activation.
 
 Groups to App Roles overview on the Grafana app:
 ![App Roles overview](images/phase3/app-roles.png)
-> We can see that grafana-admin is associated with the 'Admin'-role on the app, 
-> while the grafana-editor is associaated with the in-app 'Editor'-role
+> We can see that grafana-admins is associated with the 'Admin' role on the app,
+> while grafana-editors is associated with the in-app 'Editor' role.
 
 > **Best practice:** grant privilege just-in-time, not standing. For groups that elevate access,
 > Microsoft recommends requiring approval for eligible member activations. This uses regular MFA on
 > activation. Requires Microsoft Entra ID P2.
 > See [PIM for Groups](https://learn.microsoft.com/entra/id-governance/privileged-identity-management/concept-pim-for-groups).
+
+**Why this matters.** Standing admin rights are the thing an attacker most wants and the thing most
+often left lying around. Making Grafana Admin just-in-time means no one holds it by default, so most
+of the time there is simply no standing Admin to steal.
+
+**Trade-off from best practice.** Activation here uses regular MFA rather than a phishing-resistant
+method, while the break-glass account is FIDO2-only, so the everyday privileged path is protected a
+little more weakly than the emergency one. Approval, justification, and a short window carry it for
+now; the production version would require a phishing-resistant authentication strength on activation
+(the planned CA002). See [ADR 0005](adr/0005-regular-mfa-for-pim-activation.md).
 
 Done in the portal: this is deliberate, one-time privileged-access configuration where we want to
 see and verify every setting.

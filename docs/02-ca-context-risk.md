@@ -8,6 +8,17 @@ sign-in or user is, then proves the risk response by triggering an atypical-trav
 > baseline: one JSON per policy under `scripts/conditional-access/`, report-only first, break-glass
 > excluded. See [Configure risk-based Conditional Access](https://learn.microsoft.com/entra/id-protection/howto-identity-protection-configure-risk-policies).
 
+**Why this matters.** The baseline treats every sign-in the same. This phase adds context, so a
+sign-in from a country we do not operate in, or one that looks risky, is treated differently from a
+normal one. That is the move from blanket rules to signal-driven access.
+
+**Trade-off from best practice.** Both choices here lean strict. CA010 blocks on medium as well as
+high sign-in risk, which catches more but will occasionally block a legitimate user; a busier tenant
+might start at high-only or use a step-up instead of a hard block (see
+[ADR 0002](adr/0002-ca010-block-on-medium-risk.md)). The country allow-list has no travel-exception
+path yet, so normal travel outside the list is blocked; real use needs a temporary-location or
+named-user exception (see [ADR 0004](adr/0004-country-allow-list.md)).
+
 ## The policies (this phase)
 
 | Policy | Trigger | Control |
