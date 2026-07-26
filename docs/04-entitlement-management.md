@@ -53,7 +53,7 @@ with the `grafana-viewers` **Member** resource role, the request policies, and t
 ## 3. Test in the My Access portal (employee self-service)
 
 We ran the internal flow end to end with **Nils Normal**
-(`nils.worker@grytebdigitalsolutions.onmicrosoft.com`), who has no standing Grafana access.
+(`nils.worker@<tenant>.onmicrosoft.com`), who has no standing Grafana access.
 
 **1.** Nils opens `https://myaccess.microsoft.com`, sees **ap-grafana-viewer-employees** as the one
 package available to him, and selects **Request**.

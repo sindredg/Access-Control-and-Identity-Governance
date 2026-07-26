@@ -27,8 +27,6 @@ see and verify every setting.
 1. **Entra admin center > ID Governance > Privileged Identity Management > Groups**.
 2. We choose `grafana-admins`.
 
-![grafana-admins brought under PIM management](images/phase3/pim-manage-group.png)
-
 > Note: once a group is managed by PIM it cannot be taken back out of management (by design, so
 > another admin can't quietly strip the PIM settings).
 
