@@ -16,7 +16,7 @@ app-role mapping, SCIM provisioning). Where that project answered *who can sign 
 they get*, this one governs *under what conditions they sign in, how privilege is granted, and how
 access is requested, reviewed, and revoked*.
 
-Inspired by the learning paths: [Authentication and access management] (https://learn.microsoft.com/training/paths/implement-authentication-access-management-solution/)
+Inspired by the learning paths: [Authentication and access management](https://learn.microsoft.com/training/paths/implement-authentication-access-management-solution/)
 and [Identity governance strategy](https://learn.microsoft.com/training/paths/plan-implement-identity-governance-strategy/).
 
 ## Architecture
