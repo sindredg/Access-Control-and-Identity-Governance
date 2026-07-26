@@ -10,7 +10,8 @@ Access, risk-based policies, Privileged Identity Management, and self-service en
 
 Check docs/ for: [documented walkthroughs and the troubleshooting log](docs/)
 
-It builds directly on a previous project: [Workforce Identity Lifecycle (SSO + SCIM) for a Self-Hosted App](https://github.com/sindredg/entra-app-roles-sso-scim) | Runs the full workforce identity lifecycle against self-hosted Grafana: Entra ID as IdP, OIDC SSO with app-role mapping, and SCIM provisioning through a custom bridge. | Entra ID · OIDC · SCIM · Grafana · App Roles · Azure IaaS · Docker |](https://github.com/sindredg/entra-app-roles-sso-scim),
+It builds directly on a previous project: [Workforce Identity Lifecycle (SSO + SCIM) for a Self-Hosted App](https://github.com/sindredg/entra-app-roles-sso-scim)
+
 which stood up Entra ID as the identity provider for a self-hosted **Grafana** web app (with OIDC SSO,
 app-role mapping, SCIM provisioning). Where that project answered *who can sign in and what role
 they get*, this one governs *under what conditions they sign in, how privilege is granted, and how
