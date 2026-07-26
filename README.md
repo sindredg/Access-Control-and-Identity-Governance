@@ -10,13 +10,13 @@ Access, risk-based policies, Privileged Identity Management, and self-service en
 
 Check docs/ for: [documented walkthroughs and the troubleshooting log](docs/)
 
-It builds directly on [IAM-on-self-hosted-webapp](https://github.com/sindredg/IAM-on-self-hosted-webapp),
+It builds directly on a previous project: [IAM-on-self-hosted-webapp](https://github.com/sindredg/IAM-on-self-hosted-webapp),
 which stood up Entra ID as the identity provider for a self-hosted **Grafana** web app (with OIDC SSO,
 app-role mapping, SCIM provisioning). Where that project answered *who can sign in and what role
 they get*, this one governs *under what conditions they sign in, how privilege is granted, and how
 access is requested, reviewed, and revoked*.
 
-Inspired by the learning paths: [Authentication and access management (https://learn.microsoft.com/training/paths/implement-authentication-access-management-solution/)
+Inspired by the learning paths: [Authentication and access management] (https://learn.microsoft.com/training/paths/implement-authentication-access-management-solution/)
 and [Identity governance strategy](https://learn.microsoft.com/training/paths/plan-implement-identity-governance-strategy/).
 
 ## Architecture
