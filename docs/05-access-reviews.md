@@ -38,7 +38,7 @@ see every setting. The reviewer experience then happens in the My Access portal.
 
 4. **Settings** tab:
    - **Auto apply results to resource**: Yes (denied users are actually removed)
-   - **If reviewers don't respond**: **No change** (a missed review does not lock anyone out)
+   - **If reviewers don't respond**: **Remove access**
    - **Reviewer decision helpers > No sign-in within 30 days**: Yes (Entra flags inactive users)
    - **Justification required**: Yes; **Email notifications** and **Reminders**: Yes
    - **Additional content for reviewer email**: "Review viewer access to the Grafana app"
@@ -88,16 +88,14 @@ whole decision (who, when, why) is recorded.
 
 ## 3. The editor review: attest and audit (no auto-revoke)
 
-We create the same kind of review over **`grafana-editors`**, reviewed by **Sindre G**, with one
-deliberate difference: **Auto apply results to resource is turned off**. Cadence, decision helpers,
+We create the same kind of review over **`grafana-editors`**, reviewed by **Sindre G**, with some
+deliberate differences: **Auto apply results to resource is turned off** and **If reviewers don't respond
+is set to 'No change'** (a missed review does not lock any of the editors out). Cadence, decision helpers
 and justification match the viewer review.
 
-The effect is different on purpose. Sindre's approvals and denials are recorded and audited, but
-access is **not** removed automatically. A denial becomes a documented signal for us to remove that
-editor deliberately. This is the right posture for a tier that can change dashboards and data
-sources: we keep the attestation and the trail, but a human actions the removal.
+The effect of 'Auto apply' being disabled is set different on purpose. Sindre's approvals and denials are recorded and audited, but access is **not** removed automatically. A denial becomes a documented signal for us to remove that editor deliberately. This is the right posture for an important role that manages dashboards and data sources in Grafana: we keep the attestation and the trail, but a human actions the removal.
 
-![The three reviews: viewers, editors, admin eligibility](images/phase5/reviews-list.png)
+![The three reviews: viewers, editors, admin eligibility](images/phase5/editors-ar.png)
 
 ## 4. The admin eligibility review: privileged and careful (no auto-revoke)
 
@@ -126,6 +124,9 @@ Assignments** that approved users are still **Eligible**, not Active.
 > together, and applying "approve" persists whatever assignment type was in scope. Keeping auto-apply
 > off puts a human between the decision and the change, so eligibility is never silently promoted to
 > standing access.
+
+We now have access reviews for all roles in our Grafana app:
+![List of access reviews](images/phase5/reviews-list.png)
 
 ---
 
