@@ -1,21 +1,17 @@
 # Access Control & Identity Governance on Entra ID
 
-> **Status: work in progress.** Phases 0 to 4 are built and documented (foundations, Conditional
-> Access, locations and risk, Privileged Identity Management, entitlement management). The remaining
-> governance phases (access reviews, lifecycle workflows, monitoring) are planned. This README grows
+> **Status: work in progress.** Phases 0 to 5 are built and documented (foundations, Conditional
+> Access, locations and risk, Privileged Identity Management, entitlement management, access reviews).
+> The remaining governance phases (lifecycle workflows, monitoring) are planned. This README grows
 > as they land.
 
 A hands-on lab that governs access to a self-hosted application with Microsoft Entra ID: Conditional
-Access, risk-based policies, Privileged Identity Management, and self-service entitlement management.
+Access, risk-based policies, Privileged Identity Management, self-service entitlement management, and
+recurring access reviews.
 
 Check docs/ for: [documented walkthroughs and the troubleshooting log](docs/)
 
 It builds directly on a previous project: [Workforce Identity Lifecycle (SSO + SCIM) for a Self-Hosted App](https://github.com/sindredg/entra-app-roles-sso-scim)
-
-which stood up Entra ID as the identity provider for a self-hosted **Grafana** web app (with OIDC SSO,
-app-role mapping, SCIM provisioning). Where that project answered *who can sign in and what role
-they get*, this one governs *under what conditions they sign in, how privilege is granted, and how
-access is requested, reviewed, and revoked*.
 
 Inspired by the learning paths: [Authentication and access management](https://learn.microsoft.com/training/paths/implement-authentication-access-management-solution/)
 and [Identity governance strategy](https://learn.microsoft.com/training/paths/plan-implement-identity-governance-strategy/).
@@ -77,7 +73,10 @@ How the pieces move:
 4. **Just-in-time privilege (Phase 3).** No one holds standing Grafana Admin. Eligible users activate
    through PIM with MFA, justification, and approval; activation adds them to `grafana-admins` for a
    limited window, and a fresh sign-in surfaces the Admin role.
-5. **Break-glass.** One emergency account with standing Global Admin and a FIDO2 key sits outside
+5. **Periodic review (Phase 5).** Recurring access reviews re-attest who still needs each tier.
+   Denials revoke automatically for low-risk read access and are applied manually for privileged
+   eligibility, so nothing is granted and then forgotten.
+6. **Break-glass.** One emergency account with standing Global Admin and a FIDO2 key sits outside
    every Conditional Access policy and is never placed under PIM, so a misconfigured policy can never
    lock everyone out.
 
@@ -85,21 +84,17 @@ How the pieces move:
 
 | Phase | Focus | State | Docs |
 | --- | --- | --- | --- |
-| 0 | Foundations: break-glass account (FIDO2), personas | Done | [break-glass](docs/00-breakglass-setup.md) |
+| 0 | Foundations: break-glass account (FIDO2), personas | Done | [break-glass](docs/00-phase0-breakglass-walkthrough.md) |
 | 1 | Conditional Access baseline (MFA, legacy-auth, session, guests, mgmt, security-info) | Done | [conditional-access](docs/01-conditional-access.md) |
 | 2 | Locations and risk (country allow-list, sign-in / user risk) | Done | [context-risk](docs/02-ca-context-risk.md) |
 | 3 | Privileged Identity Management (JIT admin, PIM for Groups) | Done | [pim](docs/03-pim.md) |
 | 4 | Entitlement management (access packages, self-service, SoD) | Done | [entitlement-management](docs/04-entitlement-management.md) |
-| 5 | Access reviews | Planned | |
+| 5 | Access reviews (recurring attestation, auto-revoke and manual apply) | Done | [access-reviews](docs/05-access-reviews.md) |
 | 6 | Lifecycle workflows (joiner / mover / leaver) | Planned | |
 | 7 | Monitoring, audit and evidence | Planned | |
 
 The [troubleshooting log](docs/99-troubleshooting.md) is where the unexpected things (and the real
 learning) are captured.
-
-For the reasoning behind the controls, see the [risk register and control mapping](docs/risk-and-controls.md)
-(what each control reduces, the residual risk we accept, and a Zero Trust and CIS v8 mapping) and the
-[decision records](docs/adr/) for the choices that could have gone another way.
 
 ## Conditional Access policies (built)
 
@@ -122,14 +117,14 @@ authored in report-only, with the break-glass group excluded.
 
 | Persona | Group | Role | Purpose |
 | --- | --- | --- | --- |
-| Amanda Admin | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor by default, Admin via PIM | Standing Editor; activates Grafana Admin just-in-time (Phase 3); approves access-package requests as manager (Phase 4) |
+| Amanda Admin | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor by default, Admin via PIM | Standing Editor; activates Grafana Admin just-in-time (Phase 3); approves access-package requests as manager (Phase 4); reviews Grafana Viewer access (Phase 5) |
 | Edvard Editor | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor, Admin via PIM | Standing Editor; PIM-eligible for Admin (Phase 3) |
 | Nils Normal | `grafana-viewers` (via access package) | Viewer | Requested the viewer access package end to end (Phase 4); drives the lifecycle workflow (Phase 6) |
-| Adam Analyst | `grafana-editors` (standing) | Editor | Conditional Access blocks his MFA setup after a password reset, the CA008 deadlock (Phase 1) |
+| Adam Analyst | `grafana-editors` (standing) | — | Comditional access blocks MFA setup (Phase 2) |
 | Victoria Viewer | `grafana-viewers` | Viewer | Standard workforce user |
 | Carla Contractor | external (B2B) | Viewer | Contractor access package + guest governance (Phase 4, design) |
 | Break-glass | `breakglass-accounts` | Global Admin | Emergency access, FIDO2, excluded from all CA and PIM |
-| Sindre G | (none) | IAM Architect | Approver / reviewer: PIM approver (Phase 3), contractor-package approver (Phase 4) |
+| Sindre G | — | IAM Architect | Approver / reviewer: PIM approver (Phase 3), contractor-package approver (Phase 4), editor and admin-eligibility reviewer (Phase 5) |
 
 ## Repository layout
 
@@ -137,14 +132,13 @@ authored in report-only, with the break-glass group excluded.
 Access-Control-and-Identity-Governance/
 ├── README.md                              This file
 ├── docs/
-│   ├── 00-breakglass-setup.md               Phase 0: break-glass account + FIDO2 (portal)
+│   ├── 00-phase0-breakglass-walkthrough.md  Phase 0: break-glass account + FIDO2 (portal)
 │   ├── 01-conditional-access.md             Phase 1: CA baseline + enforcement behavior
 │   ├── 02-ca-context-risk.md                Phase 2: country allow-list + risk policies
 │   ├── 03-pim.md                            Phase 3: just-in-time Grafana Admin (PIM for Groups)
 │   ├── 04-entitlement-management.md         Phase 4: access packages (self-service, SoD)
+│   ├── 05-access-reviews.md                 Phase 5: access reviews (viewers, editors, admin eligibility)
 │   ├── 99-troubleshooting.md                Symptom / cause / fix / lesson log
-│   ├── risk-and-controls.md                 Risk register, residual risk, Zero Trust + CIS v8 mapping
-│   ├── adr/                                 Decision records for the debatable choices
 │   └── images/                              Evidence screenshots, per phase (images/phase#/)
 └── scripts/
     ├── conditional-access/
@@ -167,7 +161,7 @@ Access-Control-and-Identity-Governance/
 - **Report-only before enforce.** No policy goes straight to On; enforcement is a separate, manual step.
 - **The things that belong in the portal, we do in the portal;** the repetitive / at-scale work is
   scripted (Microsoft Graph PowerShell), idempotent, and kept as code.
-- **Every phase ends with a test matrix** (positive, negative, and control cases) and evidence screenshots.
+- **Every phase ends with a test matrix** (positive and negative cases) and evidence screenshots.
 - **The troubleshooting log is where the real learning lives** (the walkthroughs show the clean path).
 
 > Note: the lab tenant and the Grafana environment may be torn down between sessions, so live
