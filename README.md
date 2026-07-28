@@ -1,13 +1,8 @@
-# Access Control & Identity Governance on Entra ID
+# Access Control & Identity Governance on Microsoftw Entra ID
 
-> **Status: work in progress.** Phases 0 to 5 are built and documented (foundations, Conditional
-> Access, locations and risk, Privileged Identity Management, entitlement management, access reviews).
-> The remaining governance phases (lifecycle workflows, monitoring) are planned. This README grows
-> as they land.
-
-A hands-on lab that governs access to a self-hosted application with Microsoft Entra ID: Conditional
-Access, risk-based policies, Privileged Identity Management, self-service entitlement management, and
-recurring access reviews.
+A complete, hands-on lab that governs access to a self-hosted application with Microsoft Entra ID:
+Conditional Access, risk-based policies, Privileged Identity Management, self-service entitlement
+management, and access reviews.
 
 Check docs/ for: [documented walkthroughs and the troubleshooting log](docs/)
 
@@ -18,13 +13,13 @@ and [Identity governance strategy](https://learn.microsoft.com/training/paths/pl
 
 ## Architecture
 
-Two planes. The **identity plane** is the Entra ID tenant, where every access decision is made:
+We have two planes. The **identity plane** is the Entra ID tenant, where every access decision is made:
 Conditional Access and Identity Protection decide *whether* a sign-in is allowed, PIM and entitlement
 management decide *who holds which group*, and the enterprise app turns group membership into a
 Grafana role. The **application plane** is a self-hosted Azure VM running Grafana web app behind a Caddy
 HTTPS proxy, plus a small SCIM bridge that receives provisioning from Entra and calls the Grafana
 admin API. Grafana itself makes no authorization decisions; it trusts the token and the provisioned
-account.
+account from Entra.
 
 ```mermaid
 flowchart LR
@@ -90,8 +85,6 @@ How the pieces move:
 | 3 | Privileged Identity Management (JIT admin, PIM for Groups) | Done | [pim](docs/03-pim.md) |
 | 4 | Entitlement management (access packages, self-service, SoD) | Done | [entitlement-management](docs/04-entitlement-management.md) |
 | 5 | Access reviews (recurring attestation, auto-revoke and manual apply) | Done | [access-reviews](docs/05-access-reviews.md) |
-| 6 | Lifecycle workflows (joiner / mover / leaver) | Planned | |
-| 7 | Monitoring, audit and evidence | Planned | |
 
 The [troubleshooting log](docs/99-troubleshooting.md) is where the unexpected things (and the real
 learning) are captured.
@@ -119,12 +112,12 @@ authored in report-only, with the break-glass group excluded.
 | --- | --- | --- | --- |
 | Amanda Admin | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor by default, Admin via PIM | Standing Editor; activates Grafana Admin just-in-time (Phase 3); approves access-package requests as manager (Phase 4); reviews Grafana Viewer access (Phase 5) |
 | Edvard Editor | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor, Admin via PIM | Standing Editor; PIM-eligible for Admin (Phase 3) |
-| Nils Normal | `grafana-viewers` (via access package) | Viewer | Requested the viewer access package end to end (Phase 4); drives the lifecycle workflow (Phase 6) |
-| Adam Analyst | `grafana-editors` (standing) | — | Comditional access blocks MFA setup (Phase 2) |
+| Nils Normal | `grafana-viewers` (via access package) | Viewer | Requested the viewer access package end to end (Phase 4); reviewed by his manager (Phase 5) |
+| Adam Analyst | `grafana-editors` (standing) | Editor | Conditional Access blocked his MFA registration; unblocked with a TAP (Phase 2) |
 | Victoria Viewer | `grafana-viewers` | Viewer | Standard workforce user |
 | Carla Contractor | external (B2B) | Viewer | Contractor access package + guest governance (Phase 4, design) |
 | Break-glass | `breakglass-accounts` | Global Admin | Emergency access, FIDO2, excluded from all CA and PIM |
-| Sindre G | — | IAM Architect | Approver / reviewer: PIM approver (Phase 3), contractor-package approver (Phase 4), editor and admin-eligibility reviewer (Phase 5) |
+| Sindre G | - | IAM Architect | Approver / reviewer: PIM approver (Phase 3), contractor-package approver (Phase 4), editor and admin-eligibility reviewer (Phase 5) |
 
 ## Repository layout
 

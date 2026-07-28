@@ -5,23 +5,14 @@ request**. Internal employees request through the **My Access** portal; external
 governed, auto-expiring guest access. This is where the project moves from *access control* to
 *access governance*: every grant now has a requestor, an approver, a justification, and an expiry.
 
-> Requires Microsoft Entra ID P2 (or Entra ID Governance). Built **as code** with Microsoft Graph,
-> split into small ordered scripts under `scripts/entitlement-management/`, then verified and tested
-> in the portal / My Access. See
-> [What is entitlement management](https://learn.microsoft.com/entra/id-governance/entitlement-management-overview).
+> Built **as code** with Microsoft Graph, split into small ordered scripts under 
+> `scripts/entitlement-management/`, then verified and tested in the portal / My Access. 
+> See: [What is entitlement management](https://learn.microsoft.com/entra/id-governance/entitlement-management-overview).
 
 **Why this matters.** Before this phase, giving someone access meant an admin adding them to a group,
 with no record of who asked, who approved, or when it should end. Access packages turn that into a
 request with an approver, a justification, and an expiry, so access is governed rather than just
 granted.
-
-**Trade-off from best practice.** Two things are worth naming. The assignment durations (90 days for
-employees, 30 for contractors) are sensible defaults rather than the output of a data
-classification; ideally they would follow whatever review cadence Phase 5 sets (see
-[ADR 0007](adr/0007-access-package-durations.md)). And the separation-of-duties marking, as built,
-cannot actually fire, because the two packages already target mutually exclusive populations; a
-meaningful pairing (for example an admin package against an audit or review package) is what this
-would look like done properly. We call that out in section 4 below.
 
 ## What we build
 
