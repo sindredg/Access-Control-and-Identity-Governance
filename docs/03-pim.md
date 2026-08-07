@@ -1,113 +1,95 @@
 # Privileged Identity Management: just-in-time Grafana Admin (Phase 3)
 
-**Goal:** remove standing Grafana Admin privileges. `grafana-admins` (the Admin role) becomes just-in-time:
-**Amanda Admin and Edvard Editor** are *eligible* for it and activate it on demand with MFA, a
-justification, and approval. The **approver is Sindre G** (an IAM Architect), kept separate from the
-eligible users for a clean separation of duties. Amanda holds standing **Editor** access (a member
-of `grafana-editors`), so her day-to-day role is Editor and she elevates to Admin only when needed.
-Justification is required on every activation.
+**Built:** standing Grafana Admin removed. `grafana-admins` is now PIM-managed, with Amanda Admin
+and Edvard Editor eligible rather than members. Activation requires MFA, a justification and
+approval from Sindre G, who is not eligible himself. Amanda keeps standing Editor and elevates only
+when she needs to.
 
-Groups to App Roles overview on the Grafana app:
+Groups mapped to app roles on the Grafana enterprise app: `grafana-admins` drives Admin,
+`grafana-editors` drives Editor.
+
 ![App Roles overview](images/phase3/app-roles.png)
-> We can see that grafana-admins is associated with the 'Admin' role on the app,
-> while grafana-editors is associated with the in-app 'Editor' role.
 
-> **Best practice:** grant privilege just-in-time, not standing. For groups that elevate access,
-> Microsoft recommends requiring approval for eligible member activations. This uses regular MFA on
-> activation. Requires Microsoft Entra ID P2.
-> See [PIM for Groups](https://learn.microsoft.com/entra/id-governance/privileged-identity-management/concept-pim-for-groups).
+> Requires Entra ID P2. Microsoft recommends requiring approval for eligible member activations on
+> groups that elevate access.
+> [PIM for Groups](https://learn.microsoft.com/entra/id-governance/privileged-identity-management/concept-pim-for-groups).
 
-**Why this matters.** Standing admin rights are the thing an attacker most wants and the thing most
-often left lying around. Making Grafana Admin just-in-time means no one holds it by default, so most
-of the time there is simply no standing Admin to steal.
+**Where this differs from best practice.** Activation uses regular Azure MFA, not a
+phishing-resistant method, so the everyday privileged path is protected slightly more weakly than
+the break-glass account. Approval, justification and a short window carry it here. See
+[decision 4](decisions.md).
 
-**Trade-off from best practice.** Activation here uses regular MFA rather than a phishing-resistant
-method, while the break-glass account is FIDO2-only, so the everyday privileged path is protected a
-little more weakly than the emergency one. Approval, justification, and a short window carry it for
-now; the production version would require a phishing-resistant authentication strength on activation
-(the planned CA002). See [ADR 0005](adr/0005-regular-mfa-for-pim-activation.md).
-
-Done in the portal: this is deliberate, one-time privileged-access configuration where we want to
-see and verify every setting.
+Done in the portal deliberately: one-time privileged config where every setting should be visible.
 
 ---
 
-## 1. Bring `grafana-admins` under PIM management
+## 1. Bring `grafana-admins` under PIM
 
-1. **Entra admin center > ID Governance > Privileged Identity Management > Groups**.
-2. We choose `grafana-admins`.
+**Entra admin center > ID Governance > Privileged Identity Management > Groups**, select
+`grafana-admins`.
 
-> Note: once a group is managed by PIM it cannot be taken back out of management (by design, so
-> another admin can't quietly strip the PIM settings).
+> Once a group is PIM-managed it cannot be taken back out, by design, so another admin cannot
+> quietly strip the settings.
 
 ## 2. Remove standing admin, assign eligibility
 
-**1.** Remove **Amanda Admin** from `grafana-admins` (her standing/active membership) and add her to
-`grafana-editors`, so her standing role is Editor, not Admin.
+**1.** Remove Amanda from `grafana-admins` and add her to `grafana-editors`.
 
 ![Remove Amanda from grafana-admins](images/phase3/remove-amanda-admin.png)
 ![Add Amanda to grafana-editors](images/phase3/add-amanda-editor.png)
 
-**2.** Make **Amanda Admin** and **Edvard Editor** **eligible** members of `grafana-admins`, eligible
-for the next 12 months.
+**2.** Make Amanda and Edvard **eligible** members for the next 12 months.
 
 ![Assign eligibility for Amanda and Edvard](images/phase3/pim-eligible-assign.png)
 
-**3.** Both now appear under **Eligible assignments** for the group, with no standing (active)
-membership.
+**3.** Both now sit under Eligible assignments with no standing membership.
 
 ![Amanda and Edvard under eligible assignments](images/phase3/pim-eligible-list.png)
 
-## 3. Configure the member activation settings
+## 3. Activation settings
 
-Open **Groups > grafana-admins > Settings > Member > Edit** and set:
+**Groups > grafana-admins > Settings > Member > Edit**:
 
-- **Require multifactor authentication on activation**: On (Azure MFA)
-- **Require justification on activation**: On
-- **Require approval to activate**: On, approver **Sindre G**
-- **Activation maximum duration**: 6 hours
-- Leave **"Require pre-approval custom extension (Preview)"** unchecked (that calls a custom Logic
-  App we have not built; it is not the same as "Require approval to activate")
-- **Notifications**: On
+- Require multifactor authentication on activation: **On** (Azure MFA)
+- Require justification on activation: **On**
+- Require approval to activate: **On**, approver **Sindre G**
+- Activation maximum duration: **6 hours**
+- Notifications: **On**
+- Leave "Require pre-approval custom extension (Preview)" unchecked. It calls a custom Logic App we
+  have not built and is not the same as "Require approval to activate".
 
 ![Member activation settings: MFA, justification, approval by Sindre G, duration](images/phase3/pim-member-settings.png)
 
 ---
 
-## 4. Test: activate, approve, and revoke early
+## 4. Test: activate, approve, revoke early
 
-**1.** As **Amanda**, we sign in to **Entra admin center > PIM > My roles > Groups**. Amanda sees an
-eligible assignment for direct membership of `grafana-admins`.
+**1.** Amanda opens **PIM > My roles > Groups** and sees her eligible assignment.
 
 ![Amanda's eligible assignment](images/phase3/pim-my-roles.png)
 
-**2.** Amanda selects **Activate**, requests a **0.5-hour** activation, and enters a reason:
-"Managing users and teams in Grafana".
+**2.** She activates for **0.5 hours** with the reason "Managing users and teams in Grafana".
 
 ![Amanda activates for 0.5 hours with a justification](images/phase3/pim-activate.png)
 
-**3.** **Sindre G** approves the request (adding an approval reason).
+**3.** Sindre G approves, with a reason.
 
 ![Sindre G approves the activation](images/phase3/pim-approve.png)
 
-**4.** Amanda is now an active member of `grafana-admins` (Active assignments shows **Activated**),
-and after a fresh Grafana sign-in she has the **Admin** role.
+**4.** Active assignments shows **Activated**, and after a fresh Grafana sign-in Amanda has the
+Admin role. The app-role claim is issued at sign-in, so the fresh sign-in is required.
 
 ![Amanda's active (activated) assignment](images/phase3/pim-active.png)
 
-**5.** Amanda finishes the task well before the 0.5-hour window and tells us, so we **revoke her access
-early**: Sindre G removes her membership from `grafana-admins` in PIM.
+**5.** Amanda finishes early, so Sindre G removes her membership before the window expires.
 
-
-**6.** We review the audit log (**grafana-admins > My audit**), which tells the full story: Amanda's
-activation (Add member to role completed, PIM activation), followed by Sindre G's early removal
-(Remove member from role requested and completed).
+**6.** The audit log (**grafana-admins > My audit**) carries the whole sequence: activation
+requested and completed, then removal requested and completed.
 
 ![PIM audit log: activation then early removal](images/phase3/pim-audit.png)
 
-**Takeaway:** just-in-time means access exists only for as long as it is needed. Amanda held Admin
-for minutes, not permanently, and the moment the work was done it was revoked. Every step (who,
-when, why, and who approved) is captured in the PIM audit log.
+Amanda held Admin for minutes rather than permanently, and who, when, why and who approved are all
+in the log.
 
 ---
 
@@ -116,26 +98,22 @@ when, why, and who approved) is captured in the PIM audit log.
 | # | Test | Type | Expected |
 | --- | --- | --- | --- |
 | 1 | Amanda before activation | + / control | Standing Editor only, no Admin |
-| 2 | Activation requires MFA + justification + Sindre G's approval | + | Cannot activate without all three |
+| 2 | Activation requires MFA + justification + approval | + | Cannot activate without all three |
 | 3 | After approval + fresh Grafana sign-in | + | Amanda has the Admin role |
 | 4 | Early removal (or expiry) | + | Membership and Admin role removed |
-| 5 | Audit log | + | Captures activation and the early removal, with reasons and approver |
+| 5 | Audit log | + | Captures activation and early removal, with reasons and approver |
 | 6 | Break-glass account | + / control | Keeps standing access, never placed under PIM |
 
 ---
 
 ## Notes
 
-- **Separation of duties.** The approver (Sindre G) is an IAM Architect with no relation to the Grafana app,
-  except for managing access. He is therefore not one of the eligible users, so no one
-  approves their own elevation. This is the recommended pattern.
-- `grafana-admins` drives the Admin role through the enterprise app's group-to-app-role mapping (and
-  SCIM), so activation and deactivation propagate to Grafana. Because OIDC app-role claims are issued
-  at sign-in, the activating user needs a **fresh Grafana sign-in** for the Admin role to appear.
-- The approval workflow applies cleanly here because `grafana-admins` governs *app* access, not an
-  Entra directory role. For groups that elevate into Entra roles, approval behavior is governed at
-  the Entra-role level instead, a separate consideration we do not hit here.
-- Regular MFA is sufficient on activation; no phishing-resistant method is required.
+- **Separation of duties.** Sindre G approves but is not eligible, so nobody approves their own
+  elevation.
+- `grafana-admins` drives the Admin role through the group-to-app-role mapping and SCIM, so
+  activation and deactivation propagate to Grafana.
+- Approval works cleanly here because `grafana-admins` governs app access. For groups that elevate
+  into Entra directory roles, approval behaviour is governed at the Entra-role level instead.
 
 ---
 
