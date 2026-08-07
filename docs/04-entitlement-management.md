@@ -1,89 +1,73 @@
 # Entitlement management: self-service access packages (Phase 4)
 
-**Goal:** turn Grafana access from a manual group-add into a **self-service, approved, time-bound
-request**. Internal employees request through the **My Access** portal; external contractors get
-governed, auto-expiring guest access. This is where the project moves from *access control* to
-*access governance*: every grant now has a requestor, an approver, a justification, and an expiry.
+**Built:** two access packages deployed with Graph, so Grafana access is requested in My Access,
+approved, time-bound and provisioned through SCIM instead of being a manual group-add. Ran the
+internal flow end to end with a real user.
 
-> Built **as code** with Microsoft Graph, split into small ordered scripts under 
-> `scripts/entitlement-management/`, then verified and tested in the portal / My Access. 
-> See: [What is entitlement management](https://learn.microsoft.com/entra/id-governance/entitlement-management-overview).
-
-**Why this matters.** Before this phase, giving someone access meant an admin adding them to a group,
-with no record of who asked, who approved, or when it should end. Access packages turn that into a
-request with an approver, a justification, and an expiry, so access is governed rather than just
-granted.
-
-## What we build
+> [What is entitlement management](https://learn.microsoft.com/entra/id-governance/entitlement-management-overview).
 
 | Object | What it does |
 | --- | --- |
-| Catalog `cat-grafana` | Container that holds the Grafana groups as requestable resources |
+| Catalog `cat-grafana` | Holds the Grafana groups as requestable resources |
 | `ap-grafana-viewer-employees` | Grants `grafana-viewers` to internal users, manager approval, 90-day expiry |
 | `ap-grafana-contractor-guests` | Grants `grafana-viewers` to external / B2B users, approver Sindre G, 30-day expiry |
-| Separation of duties | The two packages are marked incompatible |
+| Separation of duties | The two packages marked incompatible |
 
-Granting group membership flows straight through to Grafana: the group is mapped to an app role on
-the enterprise app and provisioned by SCIM, so an approved request ends in a real Grafana account,
-and an expired one is deprovisioned.
+Group membership flows straight to Grafana: the group maps to an app role and SCIM provisions it,
+so an approved request ends in a real Grafana account and an expired one is deprovisioned.
 
 ---
 
 ## 1. Deploy as code
 
-Entitlement management has a chained, partly asynchronous object graph, so we split the deployment
-into four small, ordered, idempotent scripts. Each resolves everything by name (catalog, group,
-packages, approver), so a failure in one step doesn't block the others.
+Entitlement management has a chained, partly asynchronous object graph, so the deployment is four
+small ordered idempotent scripts. Each resolves everything by name (catalog, group, packages,
+approver), so there are no IDs to pass between them.
 
 ```powershell
 # scripts/entitlement-management  (reset any earlier attempt first, see the folder README)
 .\01-catalog-resource.ps1                    # catalog cat-grafana + grafana-viewers resource
-.\02-access-packages.ps1                      # the two packages + Member role scope
+.\02-access-packages.ps1                     # the two packages + Member role scope
 .\03-assignment-policies.ps1 -ApproverUpn "Sindre@<tenant>.onmicrosoft.com"
-.\04-separation-of-duties.ps1                 # mark the two packages incompatible
+.\04-separation-of-duties.ps1                # mark the two packages incompatible
 ```
 
 ![Access packages deployed by the scripts](images/phase4/deploy-scripts.png)
 
-## 2. Verify in the portal
-
-We open **ID Governance > Entitlement management > Access packages** and confirm both packages, each
-with the `grafana-viewers` **Member** resource role, the request policies, and the incompatibility.
+**ID Governance > Entitlement management > Access packages** confirms both packages with the
+`grafana-viewers` Member resource role, the request policies, and the incompatibility.
 
 ![Access packages in the portal](images/phase4/portal-packages.png)
 
 ---
 
-## 3. Test in the My Access portal (employee self-service)
+## 2. Test the employee flow end to end
 
-We ran the internal flow end to end with **Nils Normal**
-(`nils.worker@<tenant>.onmicrosoft.com`), who has no standing Grafana access.
+Run with **Nils Normal** (`nils.worker@<tenant>.onmicrosoft.com`), who has no standing Grafana
+access.
 
-**1.** Nils opens `https://myaccess.microsoft.com`, sees **ap-grafana-viewer-employees** as the one
-package available to him, and selects **Request**.
+**1.** Nils opens `https://myaccess.microsoft.com` and sees `ap-grafana-viewer-employees` as the one
+package available to him.
 
 ![Nils sees the viewer package in My Access](images/phase4/nils-request.png)
 
-**2.** He requests for himself and enters a business justification ("I need access for our Grafana
-project").
+**2.** He requests for himself with a justification.
 
 ![Nils enters a justification and submits](images/phase4/nils-justification.png)
 
-**3.** His **manager, Amanda Admin**, gets the pending approval in My Access and approves it with a
-reason. The request routed to the manager automatically, using the manager relationship seeded in
-Phase 0, no approver was named on this policy.
+**3.** His manager **Amanda Admin** gets the approval in My Access and approves with a reason. It
+routed to her automatically from the manager relationship seeded in Phase 0; no approver is named
+on this policy.
 
 ![Amanda approves Nils's request](images/phase4/amanda-approve.png)
 
-**4.** Entra grants the assignment and the SCIM connector provisions Nils into Grafana (provisioning
-log: **Create, Success**).
+**4.** Entra grants the assignment and SCIM provisions Nils into Grafana (**Create, Success**).
 
 ![SCIM provisions Nils into Grafana](images/phase4/scim-provisioning.png)
 
-**5.** Nils signs in to Grafana and lands on the **Viewer** role. This step first failed with
-**"User sync failed"** (a Grafana-side identity-reconciliation issue between the SCIM-created account
-and the OIDC login); see the [troubleshooting log](99-troubleshooting.md) for the one-line config fix.
-After the fix, sign-in succeeds.
+**5.** Nils signs in to Grafana as **Viewer**. This first failed with "User sync failed", a
+Grafana-side reconciliation problem between the SCIM-created account and the OIDC login. The
+one-line config fix is in the [troubleshooting log](99-troubleshooting.md).
 
 ![Nils signed in to Grafana as Viewer](images/phase4/nils-grafana-viewer.png)
 
@@ -91,36 +75,29 @@ After the fix, sign-in succeeds.
 
 ---
 
-## 4. Separation of duties (configured)
+## 3. Separation of duties (deployed, not exercised)
 
-`04-separation-of-duties.ps1` marks the two packages **incompatible**, visible under each package's
-**Separation of Duties** tab in the portal. Holding one package then blocks requesting the other. We
-did not exercise this live: by design, no single user can hold both, since one package targets
-internal users and the other targets external guests, so there is no persona that could trigger the
-block. The guardrail is deployed and verifiable in the portal.
+`04-separation-of-duties.ps1` marks the two packages incompatible, visible under each package's
+**Separation of Duties** tab. Holding one then blocks requesting the other.
 
----
+Not exercised live: one package targets internal users and the other external guests, so no persona
+can hold both and trigger the block. The guardrail is deployed and verifiable in the portal.
 
-## The external contractor path (design, not live-tested)
+## 4. The contractor path (design, not live-tested)
 
-The second package, **ap-grafana-contractor-guests**, governs external / B2B access. We built and
-deployed it, but did not run it end to end because the test contractor lives in a separate tenant we
-do not hold credentials for. The design is what matters, and it is the more interesting half of
-entitlement management:
+`ap-grafana-contractor-guests` is deployed but was not run end to end, because the test contractor
+lives in a separate tenant we do not hold credentials for.
 
-- **The request creates the guest.** The contractor policy's requestor scope is *All external users*
-  (`AllExternalSubjects` in `03-assignment-policies.ps1`), so the contractor does **not** need to
-  exist in our tenant first. We hand them a tenant-scoped My Access link
-  (`https://myaccess.microsoft.com/@<tenant>.onmicrosoft.com`); they sign in with their own external
-  email and request the package. Approval by **Sindre G** is what triggers the **B2B guest
-  invitation** automatically, so the invite, the guest object, and the access grant are one governed
-  flow rather than a manual "invite guest, then add to group" chore.
-- **Auto-expiry is the point.** The assignment is time-bound to **30 days**. When it lapses, the group
-  membership is removed, SCIM deprovisions the Grafana account, and the guest is left with no standing
-  access, no manual cleanup. This is how you keep contractor sprawl from accumulating.
-- **Separate approver on purpose.** External access routes to a designated approver (Sindre G) rather
-  than a manager, because a contractor has no manager relationship in our directory. This mirrors the
-  real split between internal (manager-approved) and external (owner-approved) governance.
+- **The request creates the guest.** The policy's requestor scope is All external users
+  (`AllExternalSubjects` in `03-assignment-policies.ps1`), so the contractor does not need to exist
+  in the tenant first. They get a tenant-scoped My Access link
+  (`https://myaccess.microsoft.com/@<tenant>.onmicrosoft.com`), sign in with their own email, and
+  request. Sindre G's approval triggers the B2B guest invitation, so invite, guest object and access
+  grant are one governed flow rather than a manual invite-then-add.
+- **Auto-expiry.** 30 days, after which group membership is removed, SCIM deprovisions the account,
+  and the guest keeps no standing access.
+- **Separate approver.** External access routes to Sindre G rather than a manager, because a
+  contractor has no manager relationship in the directory.
 
 ---
 
@@ -131,27 +108,23 @@ entitlement management:
 | 1 | Nils requests the viewer package | + | Provisioned only after approval (verified) |
 | 2 | Approval routing | + | Routed automatically to the manager (Amanda), no named approver |
 | 3 | Nils after approval + Grafana sign-in | + | Gets the Grafana Viewer role (after the user-sync fix) |
-| 4 | Contractor package (external / B2B) | design only | Deployed and explained above; not run live (no credentials for the external tenant) |
-| 5 | Separation of duties | configured | Packages marked incompatible; visible in the portal, not live-exercised (see section 4) |
-| 6 | Every grant | + | Has a requestor, approver, justification, and expiry in the request history |
+| 4 | Contractor package (external / B2B) | design only | Deployed, not run live, no credentials for the external tenant |
+| 5 | Separation of duties | configured | Packages marked incompatible, visible in the portal, not live-exercised |
+| 6 | Every grant | + | Has a requestor, approver, justification and expiry in the request history |
 
-Evidence captured into `images/phase4/`: the four deploy scripts, the packages and resource roles in
-the portal, Nils's request and justification, Amanda's approval, the SCIM provisioning log, the
-initial "User sync failed" error, and Nils's successful Grafana Viewer sign-in.
+Evidence in `images/phase4/`: the deploy scripts, packages and resource roles in the portal, Nils's
+request and justification, Amanda's approval, the SCIM provisioning log, the "User sync failed"
+error, and the successful Viewer sign-in.
 
 ---
 
 ## Notes
 
-- **The whole point is the trail.** Before this phase, access was a manual group-add with no record.
-  Now every grant answers who requested it, who approved it, why, and when it expires.
-- **Two approval patterns on purpose.** Internal requests route to the requestor's manager (using the
-  manager relationships seeded in Phase 0); external contractor requests route to a designated
-  approver (Sindre G). This shows both the self-service and the governed-external models.
-- **Provisioning reuses the existing pipeline.** Access packages grant group membership, which the
-  enterprise app maps to an app role and SCIM provisions to Grafana, so no new integration is needed.
-- **Feeds Phase 5.** An access review on each package policy is where recurring attestation (Phase 5)
-  picks up.
+- Every grant now answers who requested it, who approved it, why, and when it expires.
+- Two approval patterns on purpose: internal to the requestor's manager, external to a designated
+  approver.
+- Provisioning reuses the existing pipeline, so no new integration was needed.
+- Phase 5 adds an access review on top of these packages.
 
 ---
 

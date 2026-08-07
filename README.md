@@ -1,25 +1,32 @@
-# Access Control & Identity Governance on Microsoftw Entra ID
+# Access Control & Identity Governance on Microsoft Entra ID
 
-A complete, hands-on lab that governs access to a self-hosted application with Microsoft Entra ID:
-Conditional Access, risk-based policies, Privileged Identity Management, self-service entitlement
-management, and access reviews.
+Governing access to a self-hosted Grafana app with Entra ID: Conditional Access, risk-based
+policies, PIM, self-service access packages, and access reviews. Nine CA policies deployed from
+JSON, four entitlement-management scripts, three recurring access reviews, all tested against
+real sign-ins.
 
-Check docs/ for: [documented walkthroughs and the troubleshooting log](docs/)
 
-It builds directly on a previous project: [Workforce Identity Lifecycle (SSO + SCIM) for a Self-Hosted App](https://github.com/sindredg/entra-app-roles-sso-scim)
 
-Inspired by the learning paths: [Authentication and access management](https://learn.microsoft.com/training/paths/implement-authentication-access-management-solution/)
-and [Identity governance strategy](https://learn.microsoft.com/training/paths/plan-implement-identity-governance-strategy/).
+Builds on [Workforce Identity Lifecycle (SSO + SCIM)](https://github.com/sindredg/entra-app-roles-sso-scim).
+
+| Phase | Built | Docs |
+| --- | --- | --- |
+| 0 | Break-glass account, FIDO2-only, permanent GA | [break-glass](docs/00-breakglass-setup.md) |
+| 1 | Six baseline CA policies, report-only then enforced | [conditional-access](docs/01-conditional-access.md) |
+| 2 | Country allow-list + sign-in/user risk, proven with a VPN | [context-risk](docs/02-ca-context-risk.md) |
+| 3 | JIT Grafana Admin via PIM for Groups | [pim](docs/03-pim.md) |
+| 4 | Access packages, self-service request to Grafana account | [entitlement-management](docs/04-entitlement-management.md) |
+| 5 | Three access reviews, auto-revoke scaled to risk | [access-reviews](docs/05-access-reviews.md) |
+
+Also: [troubleshooting log](docs/99-troubleshooting.md), [decisions](docs/decisions.md),
+[risk and limitations](docs/risk-and-limitations.md).
 
 ## Architecture
 
-We have two planes. The **identity plane** is the Entra ID tenant, where every access decision is made:
-Conditional Access and Identity Protection decide *whether* a sign-in is allowed, PIM and entitlement
-management decide *who holds which group*, and the enterprise app turns group membership into a
-Grafana role. The **application plane** is a self-hosted Azure VM running Grafana web app behind a Caddy
-HTTPS proxy, plus a small SCIM bridge that receives provisioning from Entra and calls the Grafana
-admin API. Grafana itself makes no authorization decisions; it trusts the token and the provisioned
-account from Entra.
+Two planes. The **identity plane** is the Entra tenant, where every access decision is made.
+The **application plane** is an Azure VM running Grafana behind a Caddy HTTPS proxy, plus a SCIM
+bridge that calls the Grafana admin API. Grafana makes no authorization decisions of its own; it
+trusts the token and the provisioned account.
 
 ```mermaid
 flowchart LR
@@ -55,107 +62,84 @@ flowchart LR
     ENT -- SCIM provisioning --> SCB --> GRA
 ```
 
-How the pieces move:
+1. **Sign-in.** CA evaluates MFA, location and session controls; Identity Protection scores
+   sign-in and user risk. Entra issues an OIDC token with the app-role claim, and Grafana maps it
+   to Viewer / Editor / Admin.
+2. **Provisioning.** Group membership flows to Grafana over SCIM, so a grant ends in a real
+   Grafana account and a revoke deprovisions it.
+3. **Self-service (Phase 4).** A request in My Access, approved, adds the user to the Grafana
+   group, time-bound and audited.
+4. **Just-in-time (Phase 3).** No standing Grafana Admin. Eligible users activate through PIM with
+   MFA, justification and approval; a fresh sign-in surfaces the Admin role.
+5. **Review (Phase 5).** Recurring reviews re-attest each tier. Denials auto-revoke for viewers,
+   manual apply for editors and admin eligibility.
+6. **Break-glass.** One account with standing Global Admin and a FIDO2 key, excluded from every CA
+   policy and never placed under PIM.
 
-1. **Sign-in.** A user authenticates to Entra. Conditional Access evaluates MFA, location, and
-   session controls; Identity Protection scores sign-in and user risk. If allowed, Entra issues an
-   OIDC token carrying the user's app-role claim, and Grafana maps it to Viewer / Editor / Admin.
-2. **Provisioning.** Group membership flows to Grafana through SCIM: the enterprise app pushes
-   create / update / disable to the SCIM bridge, which calls the Grafana admin API, so an access
-   grant ends in a real Grafana account and a revoke deprovisions it.
-3. **Self-service request (Phase 4).** A user requests an access package in My Access; on approval,
-   Entra adds them to the Grafana group, which provisions them in via SCIM, time-bound and audited.
-4. **Just-in-time privilege (Phase 3).** No one holds standing Grafana Admin. Eligible users activate
-   through PIM with MFA, justification, and approval; activation adds them to `grafana-admins` for a
-   limited window, and a fresh sign-in surfaces the Admin role.
-5. **Periodic review (Phase 5).** Recurring access reviews re-attest who still needs each tier.
-   Denials revoke automatically for low-risk read access and are applied manually for privileged
-   eligibility, so nothing is granted and then forgotten.
-6. **Break-glass.** One emergency account with standing Global Admin and a FIDO2 key sits outside
-   every Conditional Access policy and is never placed under PIM, so a misconfigured policy can never
-   lock everyone out.
+## Conditional Access policies
 
-## Status by phase
-
-| Phase | Focus | State | Docs |
-| --- | --- | --- | --- |
-| 0 | Foundations: break-glass account (FIDO2), personas | Done | [break-glass](docs/00-phase0-breakglass-walkthrough.md) |
-| 1 | Conditional Access baseline (MFA, legacy-auth, session, guests, mgmt, security-info) | Done | [conditional-access](docs/01-conditional-access.md) |
-| 2 | Locations and risk (country allow-list, sign-in / user risk) | Done | [context-risk](docs/02-ca-context-risk.md) |
-| 3 | Privileged Identity Management (JIT admin, PIM for Groups) | Done | [pim](docs/03-pim.md) |
-| 4 | Entitlement management (access packages, self-service, SoD) | Done | [entitlement-management](docs/04-entitlement-management.md) |
-| 5 | Access reviews (recurring attestation, auto-revoke and manual apply) | Done | [access-reviews](docs/05-access-reviews.md) |
-
-The [troubleshooting log](docs/99-troubleshooting.md) is where the unexpected things (and the real
-learning) are captured.
-
-## Conditional Access policies (built)
-
-Every policy is a JSON definition deployed one at a time (or all) with `Deploy-CaPolicy.ps1`,
-authored in report-only, with the break-glass group excluded.
+Every policy is a JSON file deployed by `Deploy-CaPolicy.ps1`, authored in report-only, with the
+break-glass group excluded. `CA002` and `CA009` are reserved and not built.
 
 | Policy | What it does |
 | --- | --- |
 | `CA001-AllUsers-RequireMFA` | Require MFA for all users |
 | `CA003-BlockLegacyAuth` | Block legacy authentication |
-| `CA004-BlockOutsideAllowedCountries` | Block sign-ins outside the allowed countries (Norway, Spain, UK) |
-| `CA005-AllUsers-SessionControls` | Sign-in frequency + no persistent browser |
+| `CA004-BlockOutsideAllowedCountries` | Block outside Norway, Spain, UK |
+| `CA005-AllUsers-SessionControls` | 8h sign-in frequency + no persistent browser |
 | `CA006-Guests-RequireMFA` | MFA for guest / external users |
 | `CA007-AzureManagement-RequireMFA` | MFA for the Azure management plane |
 | `CA008-SecurityInfoRegistration-MFA` | MFA to register / change security info |
-| `CA010-SignInRisk-Block` | Block on medium / high sign-in risk (Identity Protection) |
+| `CA010-SignInRisk-Block` | Block on medium / high sign-in risk |
 | `CA011-UserRisk-RequirePasswordChange` | MFA + secure password change on high user risk |
 
 ## The cast
 
-| Persona | Group | Role | Purpose |
+| Persona | Group | Role | Used for |
 | --- | --- | --- | --- |
-| Amanda Admin | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor by default, Admin via PIM | Standing Editor; activates Grafana Admin just-in-time (Phase 3); approves access-package requests as manager (Phase 4); reviews Grafana Viewer access (Phase 5) |
-| Edvard Editor | `grafana-editors` (standing), `grafana-admins` (eligible) | Editor, Admin via PIM | Standing Editor; PIM-eligible for Admin (Phase 3) |
-| Nils Normal | `grafana-viewers` (via access package) | Viewer | Requested the viewer access package end to end (Phase 4); reviewed by his manager (Phase 5) |
-| Adam Analyst | `grafana-editors` (standing) | Editor | Conditional Access blocked his MFA registration; unblocked with a TAP (Phase 2) |
+| Amanda Admin | `grafana-editors` standing, `grafana-admins` eligible | Editor, Admin via PIM | Activates Admin JIT (P3), approves as manager (P4), reviews viewers (P5) |
+| Edvard Editor | `grafana-editors` standing, `grafana-admins` eligible | Editor, Admin via PIM | PIM eligibility (P3) |
+| Nils Normal | `grafana-viewers` via access package | Viewer | Ran the request flow end to end (P4), reviewed by his manager (P5) |
+| Adam Analyst | `grafana-editors` standing | Editor | Hit the CA008 registration deadlock, unblocked with a TAP (P1) |
 | Victoria Viewer | `grafana-viewers` | Viewer | Standard workforce user |
-| Carla Contractor | external (B2B) | Viewer | Contractor access package + guest governance (Phase 4, design) |
+| Carla Contractor | external (B2B) | Viewer | Contractor package and guest governance (P4, design only) |
 | Break-glass | `breakglass-accounts` | Global Admin | Emergency access, FIDO2, excluded from all CA and PIM |
-| Sindre G | - | IAM Architect | Approver / reviewer: PIM approver (Phase 3), contractor-package approver (Phase 4), editor and admin-eligibility reviewer (Phase 5) |
+| Sindre G | - | IAM Architect | PIM approver (P3), contractor approver (P4), editor and admin reviewer (P5) |
 
 ## Repository layout
 
 ```
-Access-Control-and-Identity-Governance/
-├── README.md                              This file
 ├── docs/
-│   ├── 00-phase0-breakglass-walkthrough.md  Phase 0: break-glass account + FIDO2 (portal)
-│   ├── 01-conditional-access.md             Phase 1: CA baseline + enforcement behavior
-│   ├── 02-ca-context-risk.md                Phase 2: country allow-list + risk policies
-│   ├── 03-pim.md                            Phase 3: just-in-time Grafana Admin (PIM for Groups)
-│   ├── 04-entitlement-management.md         Phase 4: access packages (self-service, SoD)
-│   ├── 05-access-reviews.md                 Phase 5: access reviews (viewers, editors, admin eligibility)
-│   ├── 99-troubleshooting.md                Symptom / cause / fix / lesson log
-│   └── images/                              Evidence screenshots, per phase (images/phase#/)
+│   ├── 00-breakglass-setup.md        Break-glass account + FIDO2
+│   ├── 01-conditional-access.md      CA baseline + enforcement behaviour
+│   ├── 02-ca-context-risk.md         Country allow-list + risk policies
+│   ├── 03-pim.md                     Just-in-time Grafana Admin
+│   ├── 04-entitlement-management.md  Access packages, self-service, SoD
+│   ├── 05-access-reviews.md          Three reviews across the three tiers
+│   ├── 99-troubleshooting.md         Symptom / cause / fix / lesson
+│   ├── decisions.md                  Debatable choices and consequences
+│   ├── risk-and-limitations.md       What this does not do
+│   └── images/                       Evidence per phase
 └── scripts/
     ├── conditional-access/
-    │   ├── Deploy-CaPolicy.ps1              Deploy one policy (or all), report-only, idempotent
-    │   ├── policies/                        One JSON per CA policy
-    │   └── named-locations/                 Country allow-list as JSON
+    │   ├── Deploy-CaPolicy.ps1       Deploy one policy or all, report-only, idempotent
+    │   ├── policies/                 One JSON per CA policy
+    │   └── named-locations/          Country allow-list as JSON
     └── entitlement-management/
-        ├── 01-catalog-resource.ps1          Catalog + grafana-viewers resource
-        ├── 02-access-packages.ps1           The two packages + Member role scope
-        ├── 03-assignment-policies.ps1       Request / approval / expiry policies
-        ├── 04-separation-of-duties.ps1      Mark the two packages incompatible
-        └── README.md                        Run order snippet
+        ├── 01-catalog-resource.ps1   Catalog + grafana-viewers resource
+        ├── 02-access-packages.ps1    The two packages + Member role scope
+        ├── 03-assignment-policies.ps1 Request / approval / expiry policies
+        └── 04-separation-of-duties.ps1 Mark the two packages incompatible
 ```
 
 ## Conventions
 
-- **No secrets in the repo.** Placeholders only; tenant IDs and object GUIDs are not committed.
-- **Break-glass first, always excluded.** It exists before any policy is enforced and is excluded
-  from every Conditional Access policy.
-- **Report-only before enforce.** No policy goes straight to On; enforcement is a separate, manual step.
-- **The things that belong in the portal, we do in the portal;** the repetitive / at-scale work is
-  scripted (Microsoft Graph PowerShell), idempotent, and kept as code.
-- **Every phase ends with a test matrix** (positive and negative cases) and evidence screenshots.
-- **The troubleshooting log is where the real learning lives** (the walkthroughs show the clean path).
+- No secrets in the repo. Tenant IDs and object GUIDs are placeholders.
+- Break-glass exists before any policy is enforced, and is excluded from all of them.
+- Report-only before enforce. Enforcement is always a separate manual step.
+- Repetitive work is scripted with Graph PowerShell and idempotent. One-time privileged config
+  (PIM, access reviews, break-glass) is done in the portal so every setting is visible.
+- Every phase ends with a test matrix and evidence screenshots.
 
-> Note: the lab tenant and the Grafana environment may be torn down between sessions, so live
-> hostnames and object IDs are not guaranteed to be reachable.
+> The lab tenant and Grafana environment get torn down between sessions, so live hostnames and
+> object IDs are not guaranteed to be reachable.

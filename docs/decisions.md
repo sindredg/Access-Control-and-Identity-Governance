@@ -1,8 +1,6 @@
 # Decision records
 
-Short records of the debatable choices in this lab: the context, what we decided, the consequences we
-accepted, and when we would revisit. The aim is that a reader never has to guess why something is the
-way it is.
+The debatable choices in this lab: context, decision, consequences accepted, when we would revisit.
 
 ## 1. One break-glass account, not two
 **Context.** Microsoft recommends at least two emergency-access accounts so a single expired or lost
@@ -14,8 +12,10 @@ credential cannot strand you.
 ## 2. The country policy blocks, and the allow-list is three named countries
 **Context.** We could MFA-challenge foreign sign-ins instead of blocking, and we could allow a broad
 region such as the whole EU.
-**Decision.** `CA004` hard-blocks outside Norway, Spain, and the UK, the countries this (simulated) workforce operates in. A challenge would add nothing because MFA is already enforced on every sign-in.
-**Consequences.** Legitimate travel outside those three countries is blocked. Fine for a small, known workforce; a larger org would pair this with trusted locations and potentially a travel process.
+**Decision.** `CA004` hard-blocks outside Norway, Spain and the UK, the countries this simulated
+workforce operates in. A challenge would add nothing, MFA is already enforced on every sign-in.
+**Consequences.** Legitimate travel outside those three is blocked. Fine for a small known
+workforce; a larger org would pair this with trusted locations and a travel process.
 **Revisit.** When the workforce geography changes.
 
 ## 3. Sign-in risk blocks (CA010)
@@ -28,9 +28,9 @@ risk instead. Requiring MFA again on risk would be a no-op.
 ## 4. Regular MFA on PIM activation, no phishing-resistant step-up
 **Context.** We prototyped a phishing-resistant authentication context to gate PIM and app access.
 **Decision.** We reverted it. Regular Azure MFA on activation, plus approval and justification, is
-enough for this scenario as we have already showcased FIDO2 on the breakglass account.
-**Consequences.** Activation is not phishing-resistant. Accepted because just-in-time access, approval,
-and audit already constrain the elevation. True privileged access in production should require a
+enough here, and FIDO2 is already demonstrated on the break-glass account.
+**Consequences.** Activation is not phishing-resistant. Accepted because JIT access, approval and
+audit already constrain the elevation. Production privileged access should require a
 phishing-resistant method.
 **Revisit.** For higher-sensitivity roles or a production tenant.
 
@@ -55,11 +55,11 @@ to reconcile on the immutable object id (`oid` / `sub`) instead.
 
 ## 7. Portal for deliberate config, code for the repetitive work
 **Context.** Everything could be scripted, or everything clicked.
-**Decision.** Conditional Access and entitlement management are code (MS Graph / JSON); PIM, Access Reviews
-access reviews, and the break-glass account are portal walkthroughs.
-**Consequences.** Reproducibility is uneven, the whole lab cannot be stood up from code alone.
-Accepted because the portal work is one-time and easier to verify by eye. A production version would 
-likely script the PIM and review definitions via Graph.
+**Decision.** Conditional Access and entitlement management are code (Graph / JSON). PIM, access
+reviews and the break-glass account are portal walkthroughs.
+**Consequences.** Reproducibility is uneven, the lab cannot be stood up from code alone. Accepted
+because the portal work is one-time and easier to verify by eye. A production version would script
+the PIM and review definitions via Graph.
 **Revisit.** If the lab needs repeatable, one-command setup.
 
 ## 8. Lifecycle Workflows (joiner / mover / leaver) left out of scope

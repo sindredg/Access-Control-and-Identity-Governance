@@ -1,37 +1,32 @@
-# Troubleshooting log (unexpected things that occurred)
+# Troubleshooting log
 
-A running log of things that did not go as expected, in the format: symptom, cause, fix, lesson.
-The happy path lives in the phase walkthroughs; this file is where the real learning is captured.
+Things that did not go as expected: symptom, cause, fix, lesson. The phase walkthroughs show the
+clean path; this is the rest of it.
 
 ---
 
 ## Phase 0: FIDO2 passkey registered, but sign-in only prompted for normal MFA
 
-**Symptom.** After registering a FIDO2 passkey on the break-glass account, the first sign-in
-used the key as expected. But after signing out and back in, the account was only prompted for
-normal MFA (Microsoft Authenticator), not the FIDO2 key.
+**Symptom.** After registering a FIDO2 passkey on the break-glass account, the first sign-in used
+the key. After signing out and back in, the account was only prompted for Microsoft Authenticator.
 
-**Cause.** Registering a passkey makes the method *available*, it does not make Entra *require*
-it. The account still had other authentication methods registered (Authenticator / phone). Those
-were pulled in partly by the SSPR (self-service password reset) "proof-up" prompt, which asks the
-user to register phone / Authenticator. With multiple methods present, Entra offered the default
-one at sign-in instead of the key.
+**Cause.** Registering a passkey makes the method available, it does not make Entra require it. The
+account still had Authenticator and phone registered, pulled in partly by the SSPR proof-up prompt.
+With multiple methods present, Entra offered the default one.
 
 **Fix.**
-1. Removed all non-FIDO2 methods (Authenticator, phone/SMS, email) from the account, leaving the
-   FIDO2 key as the only method.
-2. Stopped SSPR from re-adding a proof-up: scope SSPR away from the account, or disable admin
-   SSPR via `Update-MgPolicyAuthorizationPolicy`.
-3. Re-tested: sign-in now goes straight to the FIDO2 key.
+1. Removed all non-FIDO2 methods (Authenticator, phone/SMS, email), leaving the key alone.
+2. Stopped SSPR re-adding a proof-up: scope SSPR away from the account, or disable admin SSPR via
+   `Update-MgPolicyAuthorizationPolicy`.
+3. Re-tested. Sign-in goes straight to the key.
 
-**Lesson.** Registration is not enforcement. For a break-glass account, making FIDO2 the *only*
-method forces phishing-resistant sign-in with no Conditional Access policy involved. For normal
-users you get the same guarantee the other way: enforce it with a Conditional Access
-phishing-resistant authentication strength (Phase 2), not by stripping methods.
+**Lesson.** Registration is not enforcement. For break-glass, making FIDO2 the only method forces
+phishing-resistant sign-in with no CA policy involved. For normal users, do it the other way: a CA
+phishing-resistant authentication strength, not method-stripping.
 
 **How to prove it.**
-- Registered (portal): Users, the account, Authentication methods, "Passkey (FIDO2)" listed.
-- Registered (Graph):
+- Portal: Users, the account, Authentication methods, "Passkey (FIDO2)" listed.
+- Graph:
   ```powershell
   Connect-MgGraph -Scopes "UserAuthenticationMethod.Read.All"
   Get-MgUserAuthenticationFido2Method -UserId "<breakglass-upn>" |
@@ -40,149 +35,131 @@ phishing-resistant authentication strength (Phase 2), not by stripping methods.
 
 ---
 
-## Phase 1: Environment - PowerShell won't run the script ("not digitally signed")
+## Phase 1: PowerShell won't run the script ("not digitally signed")
 
-**Symptom.** Running a repo script (for example `.\Deploy-CaPolicy.ps1 -List`) fails with
-`File ... cannot be loaded. The file ... is not digitally signed. You cannot run this script on
-the current system.`
+**Symptom.** `.\Deploy-CaPolicy.ps1 -List` fails with `File ... cannot be loaded. The file ... is
+not digitally signed. You cannot run this script on the current system.`
 
-**Cause.** Two things together: the machine's PowerShell execution policy (RemoteSigned or
-AllSigned) blocks unsigned scripts that carry the "mark of the web", and files synced through
-OneDrive or downloaded from GitHub get that mark, so freshly synced repo scripts are treated as
-untrusted remote files.
+**Cause.** The execution policy (RemoteSigned or AllSigned) blocks unsigned scripts carrying the
+mark of the web, and files synced through OneDrive or downloaded from GitHub get that mark.
 
-**Fix.** Either allow scripts for the current session only (reverts when the window closes):
+**Fix.** Current session only:
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
-Or, as a standing dev-machine setup, allow local and signed-remote scripts for your user and
-strip the mark of the web from the repo:
+Or as a standing dev-machine setup:
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 Get-ChildItem -Path . -Recurse -Filter *.ps1 | Unblock-File
 ```
 
-**Lesson.** This is an environment issue, not a code issue. Scripts pulled from OneDrive or GitHub
-carry a mark-of-the-web zone tag; with RemoteSigned or AllSigned they need `Unblock-File` or a
-relaxed execution policy. Prefer `-Scope Process Bypass` while iterating so the machine default
-stays strict.
+**Lesson.** Environment issue, not a code issue. Prefer `-Scope Process Bypass` while iterating so
+the machine default stays strict.
 
 ---
 
-## Phase 1 · Password reset locks a user out of MFA registration (CA008 deadlock)
+## Phase 1: password reset locks a user out of MFA registration (CA008 deadlock)
 
-**Symptom.** After resetting a test user's password (Adam), sign-in and
-`https://aka.ms/mysecurityinfo` both returned: "Your sign-in was blocked. We are currently
-unable to collect additional security information. Your organisation requires this information
-to be set from specific locations or devices."
+**Symptom.** After resetting Adam's password, both sign-in and `https://aka.ms/mysecurityinfo`
+returned: "Your sign-in was blocked. We are currently unable to collect additional security
+information. Your organisation requires this information to be set from specific locations or
+devices."
 
-**Cause.** `CA008-SecurityInfoRegistration-MFA` requires MFA to register security info. The
-password reset left the account with no usable MFA method, so the user is deadlocked: they can't
-do MFA (nothing registered) and can't register (policy requires MFA first).
+**Cause.** `CA008-SecurityInfoRegistration-MFA` requires MFA to register security info. The password
+reset left no usable method, so the user cannot do MFA and cannot register one.
 
-**Fix.** Bootstrap the user with a Temporary Access Pass (a TAP counts as MFA), then let them
-register their real method. Getting there surfaced three sub-issues, each a lesson on its own:
-1. The TAP *method* was off by default. Enable it first:
+**Fix.** Bootstrap with a Temporary Access Pass, which counts as MFA, then let the user register a
+real method. Three sub-issues on the way:
+1. The TAP method was off by default. Enable it first:
    `PATCH /policies/authenticationMethodsPolicy/authenticationMethodConfigurations/TemporaryAccessPass`
    with `state = enabled` and an `includeTargets` group (`all_users`).
 2. `New-MgUserAuthenticationTemporaryAccessPassMethod` returned 404 "user could not be found"
-   because the UPN still had the literal `<tenant>` placeholder. Resolve the user first
-   (`Get-MgUser`) and pass the object Id.
+   because the UPN still had the literal `<tenant>` placeholder. Resolve with `Get-MgUser` and pass
+   the object Id.
 3. The pass code is only returned at creation and is not in the default table output. Capture it
-   explicitly: `$result.TemporaryAccessPass`. A TAP already existing blocks creating another, so
-   delete the old one first.
+   with `$result.TemporaryAccessPass`. An existing TAP blocks creating another, so delete the old
+   one first.
 
-The user then signs in with the TAP code instead of a password, which satisfies MFA, passes
-CA008, and lets them register. TAP is time-limited (60 min here), so register promptly, ours
-expired mid-test and had to be reissued.
+TAP is time-limited (60 min here) and ours expired mid-test and had to be reissued.
 
-Quick alternative unblock: set CA008 to `enabledForReportingButNotEnforced`, let the user register
-password + Authenticator, then set it back to `enabled`.
+Quicker unblock: set CA008 to `enabledForReportingButNotEnforced`, let the user register, set it
+back to `enabled`.
 
-**Lesson.** Any policy that gates MFA *registration* creates a chicken-and-egg for users who have
-no MFA yet (new hires, password resets that clear methods). Pair it with TAP-based onboarding or a
-trusted-location exception so first registration is possible. This is the same TAP pattern the
-Phase 6 lifecycle workflows use for new-hire onboarding.---
+**Lesson.** Any policy gating MFA *registration* deadlocks users who have no MFA yet, which means
+new hires and any password reset that clears methods. Pair it with TAP onboarding or a
+trusted-location exception.
 
 ---
 
-## Phase 4 · Grafana "Login failed: User sync failed" after access-package + SCIM provisioning
+## Phase 4: Grafana "Login failed: User sync failed" after access package + SCIM
 
-**Symptom.** Nils's access to `grafana-viewers` was requested via the access package and approved by
-his manager (Amanda). The Entra **provisioning logs** show the SCIM sync succeeded, and the Entra
-**sign-in logs** show a successful sign-in. But when Nils signs in to the Grafana app itself, Grafana
-returns **"Login failed: User sync failed."**
+**Symptom.** Nils's access was requested and approved, Entra provisioning logs show the SCIM sync
+succeeded, and the sign-in logs show a successful sign-in. Grafana itself returns
+**"Login failed: User sync failed."**
 
 ![Grafana: Login failed, User sync failed](images/phase4/grafana-sync-failed.png)
 
-**Cause.** Two provisioning paths manage the same person: SCIM **pre-created** the Grafana user, and
-now OIDC login tries to reconcile against that existing account. Since the CVE-2023-3128 hardening,
-Grafana **does not link an OAuth/OIDC login to an existing user by email by default**
-(`oauth_allow_insecure_email_lookup` defaults to `false`). So the OIDC login can't match the
-SCIM-created account, and the user sync fails. Entra is doing its job (it issued a valid token and
-SCIM synced the account); the failure is entirely on the Grafana side reconciling two identities for
-one user.
+**Cause.** Two provisioning paths manage the same person. SCIM pre-created the Grafana user, and the
+OIDC login then tries to reconcile against it. Since the CVE-2023-3128 hardening, Grafana does not
+link an OAuth/OIDC login to an existing user by email by default
+(`oauth_allow_insecure_email_lookup` defaults to `false`), so the login cannot match the
+SCIM-created account. Entra did its job; the failure is Grafana reconciling two identities for one
+user.
 
 **Fix.**
-1. Confirm the exact reason in the **Grafana server logs** (`sudo docker compose logs -f grafana` on
-   the VM) - look for a user lookup / duplicate email line around the failed login.
-2. Allow OAuth to link to the existing SCIM user by email. Because our compose file uses the
-   `KEY: "value"` mapping style, we added to the grafana service `environment:` block:
+1. Confirm the reason in the Grafana server logs (`sudo docker compose logs -f grafana`), looking
+   for a user lookup or duplicate email line around the failed login.
+2. Allow OAuth to link to the existing SCIM user by email. Our compose file uses the `KEY: "value"`
+   mapping style, so in the grafana service `environment:` block:
    ```yaml
    GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP: "true"
    ```
-   (Equivalently, `grafana.ini` under `[auth]`: `oauth_allow_insecure_email_lookup = true`.)
-3. Recreate the container so the new env var is actually applied (a plain restart is not enough, env
-   changes only take effect on recreate):
+   (Or in `grafana.ini` under `[auth]`: `oauth_allow_insecure_email_lookup = true`.)
+3. Recreate the container. A plain restart is not enough, env changes only take effect on recreate:
    ```bash
    sudo docker compose up -d --force-recreate grafana
-   sudo docker compose exec grafana env | grep INSECURE_EMAIL_LOOKUP   # confirm it is set
+   sudo docker compose exec grafana env | grep INSECURE_EMAIL_LOOKUP
    ```
-   Look for **"Container grafana Recreated"** (not "Running") and the grep echoing the value. Nils
-   then signs in and lands on the Viewer role.
+   Look for "Container grafana Recreated", not "Running", and the grep echoing the value.
 
    ![Nils signs in to Grafana as Viewer after the fix](images/phase4/nils-grafana-viewer.png)
-4. Alternative (no email matching at all): align on the stable immutable ID so login and
-   pre-provisioning reconcile on `oid`/`sub` rather than email. That means making the SCIM bridge set
-   the Grafana user's auth identity to the same Entra object ID the OIDC token presents. More work and
-   a bridge change, but it removes the need for the flag entirely.
+4. Alternative with no email matching at all: reconcile on `oid`/`sub` by making the SCIM bridge set
+   the Grafana user's auth identity to the Entra object ID the OIDC token presents. More work and a
+   bridge change, but the flag becomes unnecessary.
 
-**Note:**
-The setting name is deliberately alarming, so it is worth being precise about the risk and why it is
-acceptable *here*.
-- **The risk it guards against (CVE-2023-3128).** Email-based linking is dangerous when the IdP hands
-  out email claims that are **unverified and user-settable**. An attacker could set their profile
-  email to `victim@company.com`, sign in, get linked to the victim's existing Grafana account, and
-  take it over. That is exactly why Grafana disabled email lookup by default.
-- **Why it is acceptable in this lab.** The precondition (untrusted, self-settable email) does not
-  hold. The IdP is **our own single Entra tenant**; the email / UPN comes from accounts we provision,
-  users cannot freely rewrite their verified UPN to impersonate someone else, and every sign-in has
-  already passed Conditional Access and MFA. We already trust Entra's email claim for everything else
-  in the project, so trusting it for account linking adds no new trust assumption.
-- **When it would be bad.** Multi-tenant or federated setups where email claims come from IdPs you do
-  not control, or any tenant that allows unverified self-service email edits. There, prefer the
-  immutable-ID approach in fix step 4 and leave the flag `false`.
+**On the risk.** The setting name is deliberately alarming, so being precise about it:
 
-**Verdict:** ok for a lab single-tenant environment, self-controlled IdP with verified emails; genuinely risky
-in multi-tenant / federated contexts.
+- **What it guards against.** Email-based linking is dangerous when the IdP hands out email claims
+  that are unverified and user-settable. An attacker sets their profile email to
+  `victim@company.com`, signs in, gets linked to the victim's Grafana account, and takes it over.
+- **Why it is acceptable here.** That precondition does not hold. The IdP is our own single Entra
+  tenant, the email and UPN come from accounts we provision, users cannot rewrite their verified UPN,
+  and every sign-in has already passed Conditional Access and MFA. We already trust Entra's email
+  claim everywhere else in the project.
+- **When it would not be.** Multi-tenant or federated setups where email claims come from IdPs you
+  do not control, or tenants allowing unverified self-service email edits. There, use the
+  immutable-ID approach in step 4 and leave the flag `false`.
 
-**Lesson.** When both SCIM pre-provisioning and JIT OIDC login manage the same user, **identity
-reconciliation is the hard part, not provisioning.** "Entra sign-in succeeded" and "SCIM synced" do
-not guarantee the app accepts the login; the application still has to match the two identities to one
-account. Grafana's secure-by-default email lookup is a very common gotcha in combined SCIM + OIDC
-setups, and the "right" long-term fix is to reconcile on immutable IDs, not email.
+**Lesson.** When SCIM pre-provisioning and JIT OIDC login manage the same user, identity
+reconciliation is the hard part, not provisioning. "Entra sign-in succeeded" and "SCIM synced" do
+not guarantee the app accepts the login. The long-term fix is reconciling on immutable IDs, not
+email.
 
 ---
 
-## Entry template (copy for the next one)
+## Phase 5: auto-apply on a PIM-managed review promoted eligible to standing
 
-## Phase X · <short symptom title>
+**Symptom.** Applying results of an access review over `grafana-admins` converted an **eligible**
+member into a **standing (active)** admin, the opposite of what Phase 3 set up.
 
-**Symptom.** What you saw.
+**Cause.** A Teams + Groups review of a PIM-managed group covers eligible and active assignments
+together, since there is no eligible-only scope. Applying "approve" persists whatever assignment
+type was in scope.
 
-**Cause.** Why it happened.
+**Fix.** Leave **Auto apply results to resource** unchecked on privileged reviews. Review across the
+two stages, then apply manually only after confirming in
+**PIM > Groups > grafana-admins > Assignments** that approved users are still Eligible.
 
-**Fix.** What resolved it (numbered if multiple steps).
-
-**Lesson.** The takeaway worth remembering.
-
+**Lesson.** Auto-apply is safe for low-risk membership reviews and unsafe on PIM-managed groups.
+Scale the apply behaviour to the tier being reviewed, which is why the viewer review auto-applies
+and the editor and admin reviews do not.
