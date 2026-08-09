@@ -2,10 +2,13 @@
 
 Governing access to a self-hosted Grafana app with Entra ID: Conditional Access, risk-based
 policies, PIM, self-service access packages, and access reviews. Nine CA policies deployed from
-JSON, four entitlement-management scripts, three recurring access reviews, all tested against
-real sign-ins.
+JSON and enforced after report-only, three recurring access reviews run end to end, and four
+entitlement-management scripts. The contractor path and separation of duties are deployed but
+not live-exercised.
 
-
+> **Complete.** Built and tested on Entra ID P2. The licence has since lapsed and the Grafana
+> environment is torn down, so hostnames and object IDs in the evidence are no longer reachable.
+> This is a record of what was built and verified, not a running lab.
 
 Builds on [Workforce Identity Lifecycle (SSO + SCIM)](https://github.com/sindredg/entra-app-roles-sso-scim).
 
@@ -140,6 +143,3 @@ break-glass group excluded. `CA002` and `CA009` are reserved and not built.
 - Repetitive work is scripted with Graph PowerShell and idempotent. One-time privileged config
   (PIM, access reviews, break-glass) is done in the portal so every setting is visible.
 - Every phase ends with a test matrix and evidence screenshots.
-
-> The lab tenant and Grafana environment get torn down between sessions, so live hostnames and
-> object IDs are not guaranteed to be reachable.

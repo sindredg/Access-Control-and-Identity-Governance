@@ -127,6 +127,11 @@ app, not legacy, not a guest scenario, and she is in an allowed country.
 
 ![Amanda's first Grafana sign-in: only MFA and session controls apply](images/phase1/amanda-grafana-first.png)
 
+The application side of the same sign-in. The logs prove which policies evaluated; this proves
+she reached the app.
+
+![Amanda signed in to Grafana](images/phase1/amanda-grafana-sso.png)
+
 CA008 does not appear at all, because it is still report-only and its results live under the
 separate **Report-only** tab.
 

@@ -100,6 +100,11 @@ All three reviews in place:
 
 ![List of access reviews](images/phase5/reviews-list.png)
 
+Results are recorded per reviewer and per decision, which is what makes a review an audit trail
+rather than a tidy-up. Five users, four approved, one denied:
+
+![Review results: five users, four approved, one denied](images/phase5/review-results-overview.png)
+
 ---
 
 ## Verification / test matrix
