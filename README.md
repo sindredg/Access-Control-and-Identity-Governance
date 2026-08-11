@@ -107,7 +107,7 @@ break-glass group excluded. `CA002` and `CA009` are reserved and not built.
 | Victoria Viewer | `grafana-viewers` | Viewer | Standard workforce user |
 | Carla Contractor | external (B2B) | Viewer | Contractor package and guest governance (P4, design only) |
 | Break-glass | `breakglass-accounts` | Global Admin | Emergency access, FIDO2, excluded from all CA and PIM |
-| Sindre G | - | IAM Architect | PIM approver (P3), contractor approver (P4), editor and admin reviewer (P5) |
+| Sindre G | - | IAM Engineer | PIM approver (P3), contractor approver (P4), editor and admin reviewer (P5) |
 
 ## Repository layout
 
